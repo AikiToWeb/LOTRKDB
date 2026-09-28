@@ -34,6 +34,10 @@ npm run preview
 
 ## 현재 배포: Render Web Service + Render PostgreSQL
 
+**공개 사이트:** [https://lotrkdb.onrender.com](https://lotrkdb.onrender.com)
+
+2026-09-28 실제 Render 배포와 PostgreSQL 저장 테스트를 완료했습니다. [배포 테스트 결과](docs/DEPLOYMENT_TEST.md)를 확인하세요. 사이트에서 회원가입 후 로그인하면 모바일/PC에서 같은 계정의 기록을 불러올 수 있습니다.
+
 사용자가 요청한 Render DB 테스트 구성입니다. `render.yaml`로 싱가포르의 무료 웹 서비스 `lotrkdb`와 무료 PostgreSQL `lotrkdb-postgres`를 함께 생성합니다.
 
 1. Render Dashboard → New → Blueprint에서 `https://github.com/AikiToWeb/LOTRKDB`를 연결합니다.
@@ -76,6 +80,12 @@ Vite가 `/api`를 로컬 3001번 서버로 전달합니다. Render 배포에서�
 ### 서버 테스트
 
 `npm test`는 비밀번호 해시, 인증/Origin 경계, 기록 변경 계산과 기존 도메인 테스트를 실행합니다. `TEST_DATABASE_URL`이 있을 때 실제 PostgreSQL에서 가입, 세션 쿠키, 사용자별 기록 격리, 변경/삭제, 다른 기기의 관계없는 기록 보존, 잘못된 기록 거부, 로그아웃과 재로그인을 검증합니다. GitHub Actions는 임시 PostgreSQL 16 서비스를 생성해 이 통합 테스트를 실행합니다.
+
+```sh
+npm run test:deployment -- https://lotrkdb.onrender.com
+```
+
+실제 배포를 대상으로 임시 테스트 계정 두 개를 만들고 저장/조회/재로그인/계정 격리를 검증합니다. 완료 후 임시 덱·플레이·캠페인·보유 기록과 세션을 정리합니다. 빈 테스트 계정 두 개는 DB에 남으며 실제 이메일을 발송하지 않습니다. 앱 이용자의 기존 기록을 수정하지 않습니다.
 
 ## 대체 배포: Render Static Site + Supabase
 
