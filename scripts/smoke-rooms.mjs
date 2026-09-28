@@ -8,7 +8,7 @@ if (!origin.startsWith("https://") && !origin.startsWith("http://127.0.0.1"))
 const password = randomBytes(24).toString("base64url");
 const actors = ["host", "player"].map((role) => ({
   role,
-  email: `qa-room-${role}-${randomUUID()}@example.invalid`,
+  username: `qa_${role}_${randomUUID().replaceAll("-", "").slice(0, 10)}`,
   id: "",
   cookie: "",
   state: emptyState(),
@@ -41,7 +41,11 @@ try {
   await call(null, "/rooms", undefined, "GET", 401);
   for (const [index, actor] of actors.entries()) {
     actor.id = (
-      await call(actor, "/auth/signup", { email: actor.email, password })
+      await call(actor, "/auth/signup", {
+        username: actor.username,
+        name: actor.role === "host" ? "방장 테스트" : "참여자 테스트",
+        password,
+      })
     ).user.id;
     const deck = {
       id: randomUUID(),
@@ -109,7 +113,7 @@ try {
   assert.equal(room.members.length, 2);
   assert.ok(room.members.every((m) => m.deck && m.ready));
   assert.ok(!JSON.stringify(room).includes("QA-only private notes"));
-  assert.ok(!JSON.stringify(room).includes(host.email));
+  assert.ok(!JSON.stringify(room).includes(host.username));
   await call(
     player,
     `/rooms/${room.id}/me`,
@@ -127,7 +131,12 @@ try {
   // Temporary QA credentials for browser verification, never tracked or logged.
   await writeFile(
     "tmp/room-qa.json",
-    JSON.stringify({ email: host.email, password, roomId: room.id, origin }),
+    JSON.stringify({
+      username: host.username,
+      password,
+      roomId: room.id,
+      origin,
+    }),
   );
   console.log(
     JSON.stringify({

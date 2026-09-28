@@ -7,8 +7,16 @@ if (!origin.startsWith("https://") && !origin.startsWith("http://127.0.0.1"))
 const suffix = randomUUID();
 const password = randomBytes(24).toString("base64url");
 const actors = [
-  { email: `qa-owner-${suffix}@example.invalid`, cookie: "", id: "" },
-  { email: `qa-other-${suffix}@example.invalid`, cookie: "", id: "" },
+  {
+    username: `qa_owner_${suffix.replaceAll("-", "").slice(0, 12)}`,
+    cookie: "",
+    id: "",
+  },
+  {
+    username: `qa_other_${suffix.replaceAll("-", "").slice(0, 12)}`,
+    cookie: "",
+    id: "",
+  },
 ];
 const checks = [];
 async function call(
@@ -51,7 +59,7 @@ try {
     const signup = await call("/api/auth/signup", {
       method: "POST",
       actor,
-      body: { email: actor.email, password },
+      body: { username: actor.username, name: "배포 검증", password },
     });
     actor.id = signup.user.id;
     assert.ok(actor.cookie);

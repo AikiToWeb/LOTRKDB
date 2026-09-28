@@ -83,7 +83,9 @@ export function createApp({
     const token = randomBytes(32).toString("hex");
     await store.createSession(tokenHash(token), user.id);
     res.cookie(cookieName, token, sessionCookie);
-    res.json({ user: { id: user.id, email: user.email } });
+    res.json({
+      user: { id: user.id, username: user.username, name: user.name },
+    });
   }
   async function authenticate(req, res, next) {
     try {
@@ -128,17 +130,18 @@ export function createApp({
   });
   app.post("/api/auth/signup", authLimit, async (req, res, next) => {
     try {
-      const { email, password } = credentials(req.body);
+      const { username, name, password } = credentials(req.body, true);
       const user = {
         id: randomUUID(),
-        email,
+        username,
+        name,
         passwordHash: await hashPassword(password),
       };
       await store.createUser(user);
       await issueSession(res, user);
     } catch (e) {
       if (e.code === "23505") {
-        res.status(409).json({ error: "이미 사용 중인 이메일입니다." });
+        res.status(409).json({ error: "이미 사용 중인 아이디입니다." });
         return;
       }
       next(e);
@@ -146,8 +149,8 @@ export function createApp({
   });
   app.post("/api/auth/login", authLimit, async (req, res, next) => {
     try {
-      const { email, password } = credentials(req.body);
-      const user = await store.userByEmail(email);
+      const { username, password } = credentials(req.body);
+      const user = await store.userByUsername(username);
       const valid = await verifyPassword(
         password,
         user?.password_hash ?? dummyHash,
@@ -155,7 +158,7 @@ export function createApp({
       if (!user || !valid) {
         res
           .status(401)
-          .json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." });
+          .json({ error: "아이디 또는 비밀번호가 올바르지 않습니다." });
         return;
       }
       await issueSession(res, user);

@@ -54,8 +54,8 @@ test(
         serveStatic: false,
       });
     const actors = [request.agent(app), request.agent(app), request.agent(app)];
-    const emails = actors.map(
-        (_, i) => `room-${i}-${randomUUID()}@example.invalid`,
+    const usernames = actors.map(
+        (_, i) => `room_${i}_${randomUUID().replaceAll("-", "").slice(0, 12)}`,
       ),
       ids = [];
     const send = (actor, method, path, body = {}) =>
@@ -67,7 +67,11 @@ test(
         const result = await actor
           .post("/api/auth/signup")
           .set("Origin", "http://test.local")
-          .send({ email: emails[i], password: "room-test-password" })
+          .send({
+            username: usernames[i],
+            name: `플레이어${i}`,
+            password: "room-test-password",
+          })
           .expect(200);
         ids.push(result.body.user.id);
       }
@@ -134,7 +138,7 @@ test(
         false,
       );
       assert.ok(!JSON.stringify(changed).includes("private notes"));
-      assert.ok(!JSON.stringify(changed).includes(emails[0]));
+      assert.ok(!JSON.stringify(changed).includes(usernames[0]));
       await send(player, "put", `${url}/me`, { ready: true }).expect(200);
       await player
         .put(`/api/rooms${url}/me`)
@@ -185,9 +189,10 @@ test(
         200,
       );
     } finally {
-      await pool.query("delete from lotr_users where email=any($1::text[])", [
-        emails,
-      ]);
+      await pool.query(
+        "delete from lotr_users where username=any($1::text[])",
+        [usernames],
+      );
       await pool.end();
     }
   },

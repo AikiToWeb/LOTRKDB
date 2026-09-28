@@ -22,20 +22,37 @@ export async function verifyPassword(password, stored) {
 }
 export const tokenHash = (token) =>
   createHash("sha256").update(token).digest("hex");
-export function credentials(body) {
-  const email =
-    typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+export function credentials(body, signup = false) {
+  const username =
+    typeof body?.username === "string"
+      ? body.username.trim().toLowerCase()
+      : "";
   const password = body?.password;
   if (
-    email.length > 254 ||
-    !/^\S+@\S+\.\S+$/.test(email) ||
+    !username ||
+    username.length > 254 ||
     typeof password !== "string" ||
     password.length < 8 ||
     password.length > 128
   )
     throw Object.assign(
-      new Error("올바른 이메일과 8~128자의 비밀번호를 입력하세요."),
+      new Error("아이디와 8~128자의 비밀번호를 입력하세요."),
       { status: 400 },
     );
-  return { email, password };
+  if (signup && !/^[a-z0-9][a-z0-9_]{2,23}$/.test(username))
+    throw Object.assign(
+      new Error(
+        "아이디는 영문·숫자·밑줄 3~24자로 입력하세요. 첫 글자는 영문 또는 숫자여야 합니다.",
+      ),
+      { status: 400 },
+    );
+  const name = typeof body?.name === "string" ? body.name.trim() : "";
+  if (
+    signup &&
+    (!name || name.length > 30 || /[\u0000-\u001f\u007f]/.test(name))
+  )
+    throw Object.assign(new Error("이름은 1~30자로 입력하세요."), {
+      status: 400,
+    });
+  return { username, password, ...(signup ? { name } : {}) };
 }

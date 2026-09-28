@@ -1,5 +1,6 @@
 import { registerCardSearch } from "./webmcp";
 import { Rooms } from "./Rooms";
+import { renderCloud } from "./render-client";
 import {
   CardBrowser,
   CardRules,
@@ -52,6 +53,7 @@ import {
 } from "./domain.mjs";
 import {
   cloud,
+  supabase,
   useRender,
   readCloud,
   readLocal,
@@ -214,7 +216,12 @@ export default function App() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState("");
   const [state, setState] = useState<State>(emptyState());
-  const [user, setUser] = useState<{ id: string; email?: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    email?: string;
+    username?: string;
+    name?: string;
+  } | null>(null);
   const [status, setStatus] = useState("이 기기에 저장");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState(false);
@@ -296,7 +303,14 @@ export default function App() {
   }, [catalog]);
   useEffect(() => {
     let live = true;
-    async function change(next: { id: string; email?: string } | null) {
+    async function change(
+      next: {
+        id: string;
+        email?: string;
+        username?: string;
+        name?: string;
+      } | null,
+    ) {
       const identity = next?.id ?? null;
       // Repeated session notifications should preserve open editors.
       if (sessionIdentity.current === identity) return;
@@ -542,7 +556,7 @@ export default function App() {
                 onClick={() => go("settings")}
                 aria-label="계정 설정"
               >
-                {(user.email ?? "U")[0].toUpperCase()}
+                {(user.name ?? user.email ?? "U")[0].toUpperCase()}
               </button>
             ) : (
               <button className="btn small" onClick={() => setAuth(true)}>
@@ -955,6 +969,7 @@ export default function App() {
                     catalog={catalog}
                     decks={state.decks}
                     userId={user?.id}
+                    playerName={user?.name}
                     enabled={useRender}
                     saved={ready && !busy && !pending}
                     onLogin={() => setAuth(true)}
@@ -1122,7 +1137,11 @@ export default function App() {
                     <section className="panel settings-panel">
                       <h2>계정과 저장</h2>
                       <p>
-                        {user ? user.email : "현재 게스트로 사용 중입니다."}
+                        {user
+                          ? user.name
+                            ? `${user.name} · ${user.username}`
+                            : user.email
+                          : "현재 게스트로 사용 중입니다."}
                       </p>
                       <div className="notice">
                         {user
@@ -2800,6 +2819,8 @@ function Auth({
 }) {
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login"),
     [email, setEmail] = useState(""),
+    [username, setUsername] = useState(""),
+    [name, setName] = useState(""),
     [password, setPassword] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
@@ -2835,6 +2856,27 @@ function Auth({
             setLoading(true);
             setError("");
             try {
+              if (useRender) {
+                const result =
+                  mode === "signup"
+                    ? await renderCloud.auth.signUp({
+                        username,
+                        name,
+                        password,
+                      })
+                    : await renderCloud.auth.signInWithPassword({
+                        username,
+                        password,
+                      });
+                if (result.error) throw result.error;
+                notify(
+                  mode === "signup"
+                    ? "회원가입을 완료했습니다."
+                    : "로그인했습니다.",
+                );
+                onClose();
+                return;
+              }
               if (mode === "reset") {
                 const { error } = await cloud!.auth.resetPasswordForEmail(
                   email,
@@ -2846,8 +2888,11 @@ function Auth({
               } else {
                 const { data, error } =
                   mode === "login"
-                    ? await cloud!.auth.signInWithPassword({ email, password })
-                    : await cloud!.auth.signUp({
+                    ? await supabase!.auth.signInWithPassword({
+                        email,
+                        password,
+                      })
+                    : await supabase!.auth.signUp({
                         email,
                         password,
                         options: {
@@ -2867,16 +2912,56 @@ function Auth({
           }}
         >
           <p>로그인하면 계정에 덱과 모험 기록을 저장합니다.</p>
-          <label className="field">
-            이메일
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
+          {useRender && mode === "signup" && (
+            <label className="field">
+              이름
+              <input
+                required
+                maxLength={30}
+                autoComplete="nickname"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="함께 플레이할 때 사용할 이름"
+              />
+            </label>
+          )}
+          {useRender ? (
+            <label className="field">
+              아이디
+              <input
+                aria-label="아이디"
+                required
+                minLength={mode === "signup" ? 3 : 1}
+                maxLength={mode === "signup" ? 24 : 254}
+                pattern={
+                  mode === "signup"
+                    ? "[A-Za-z0-9][A-Za-z0-9_]{2,23}"
+                    : undefined
+                }
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              {mode === "signup" && (
+                <small className="muted">
+                  영문·숫자·밑줄 3~24자 · 대소문자는 구분하지 않습니다.
+                </small>
+              )}
+            </label>
+          ) : (
+            <label className="field">
+              이메일
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+          )}
           {mode !== "reset" && (
             <label className="field">
               비밀번호
@@ -2884,6 +2969,8 @@ function Auth({
                 type="password"
                 required
                 minLength={8}
+                maxLength={128}
+                placeholder="8자 이상"
                 autoComplete={
                   mode === "login" ? "current-password" : "new-password"
                 }
@@ -2934,8 +3021,8 @@ function Auth({
           </div>
           {useRender && (
             <p className="muted">
-              테스트 서버에서는 이메일 확인과 비밀번호 재설정 메일을 제공하지
-              않습니다.
+              이메일·전화번호·SNS 연동 없이 가입합니다. 기존 이메일 계정은
+              아이디 칸에 기존 이메일을 입력해 로그인하세요.
             </p>
           )}
         </form>

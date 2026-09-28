@@ -4,7 +4,17 @@ create table if not exists lotr_users (
   password_hash text not null,
   created_at timestamptz not null default now()
 );
+alter table lotr_users add column if not exists username text;
+alter table lotr_users add column if not exists display_name text;
+alter table lotr_users alter column email drop not null;
+-- Preserve existing UUIDs, password hashes and saved documents.
+update lotr_users set username=lower(email) where username is null;
+update lotr_users set display_name=left(split_part(email,'@',1),30) where display_name is null;
+alter table lotr_users alter column username set not null;
+alter table lotr_users alter column display_name set not null;
+create unique index if not exists lotr_users_username_idx on lotr_users(lower(username));
 create table if not exists lotr_sessions (
+  -- Sessions retain the original user UUID during the username migration.
   token_hash text primary key,
   user_id uuid not null references lotr_users(id) on delete cascade,
   expires_at timestamptz not null

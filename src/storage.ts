@@ -5,7 +5,7 @@ import { renderCloud, renderRequest } from "./render-client";
 export const useRender = import.meta.env.VITE_STORAGE_PROVIDER === "render";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = url && key ? createClient(url, key) : null;
+export const supabase = url && key ? createClient(url, key) : null;
 export const cloud = useRender ? renderCloud : supabase;
 export const storageKey = (user?: string) => `lotrdb.v1.${user ?? "guest"}`;
 export function readLocal(user?: string): State {

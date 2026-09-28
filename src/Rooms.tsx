@@ -43,6 +43,7 @@ export function Rooms({
   catalog,
   decks,
   userId,
+  playerName,
   enabled,
   saved,
   onLogin,
@@ -51,6 +52,7 @@ export function Rooms({
   catalog: Catalog;
   decks: Deck[];
   userId?: string;
+  playerName?: string;
   enabled: boolean;
   saved: boolean;
   onLogin: () => void;
@@ -60,7 +62,7 @@ export function Rooms({
     [room, setRoom] = useState<Room | null>(null),
     [selectedId, setSelectedId] = useState("");
   const [name, setName] = useState("우리 원정대"),
-    [nickname, setNickname] = useState(""),
+    [nickname, setNickname] = useState(playerName || ""),
     [scenarioId, setScenarioId] = useState("1"),
     [maxPlayers, setMaxPlayers] = useState(4);
   const [code, setCode] = useState(

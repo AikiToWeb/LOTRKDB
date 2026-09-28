@@ -61,18 +61,18 @@ export class PostgresStore {
   constructor(pool) {
     this.pool = pool;
   }
-  async userByEmail(email) {
+  async userByUsername(username) {
     return (
       await this.pool.query(
-        "select id,email,password_hash from lotr_users where email=$1",
-        [email],
+        "select id,username,display_name as name,password_hash from lotr_users where lower(username)=$1",
+        [username],
       )
     ).rows[0];
   }
   async createUser(user) {
     await this.pool.query(
-      "insert into lotr_users(id,email,password_hash) values ($1,$2,$3)",
-      [user.id, user.email, user.passwordHash],
+      "insert into lotr_users(id,username,display_name,password_hash) values ($1,$2,$3,$4)",
+      [user.id, user.username, user.name, user.passwordHash],
     );
   }
   async createSession(hash, userId) {
@@ -85,7 +85,7 @@ export class PostgresStore {
   async session(hash) {
     return (
       await this.pool.query(
-        "select u.id,u.email from lotr_sessions s join lotr_users u on u.id=s.user_id where s.token_hash=$1 and s.expires_at>now()",
+        "select u.id,u.username,u.display_name as name from lotr_sessions s join lotr_users u on u.id=s.user_id where s.token_hash=$1 and s.expires_at>now()",
         [hash],
       )
     ).rows[0];

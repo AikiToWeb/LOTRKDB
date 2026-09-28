@@ -1,4 +1,5 @@
-type User = { id: string; email: string };
+export type SiteUser = { id: string; username: string; name: string };
+type User = SiteUser;
 type Session = { user: User };
 type AuthResult = {
   data: { session: Session | null; user: User | null };
@@ -51,20 +52,22 @@ export const renderCloud = {
       };
     },
     signInWithPassword: ({
-      email,
+      username,
       password,
     }: {
-      email: string;
+      username: string;
       password: string;
-    }) => authAction("/auth/login", { email, password }, "SIGNED_IN"),
+    }) => authAction("/auth/login", { username, password }, "SIGNED_IN"),
     signUp: ({
-      email,
+      username,
+      name,
       password,
     }: {
-      email: string;
+      username: string;
+      name: string;
       password: string;
       options?: unknown;
-    }) => authAction("/auth/signup", { email, password }, "SIGNED_IN"),
+    }) => authAction("/auth/signup", { username, name, password }, "SIGNED_IN"),
     async signOut() {
       try {
         await renderRequest("/auth/logout", {});

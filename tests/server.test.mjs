@@ -74,23 +74,50 @@ test(
     const owner = request.agent(app),
       other = request.agent(app);
     const suffix = randomUUID();
-    const emails = [
-      `owner-${suffix}@example.invalid`,
-      `other-${suffix}@example.invalid`,
+    const usernames = [
+      `owner_${suffix.replaceAll("-", "").slice(0, 12)}`,
+      `other_${suffix.replaceAll("-", "").slice(0, 12)}`,
     ];
     try {
       const first = await owner
         .post("/api/auth/signup")
         .set("Origin", "http://test.local")
-        .send({ email: emails[0], password: "long-test-password" })
+        .send({
+          username: usernames[0],
+          name: "방장",
+          password: "long-test-password",
+        })
         .expect(200);
       const userId = first.body.user.id;
+      assert.deepEqual(first.body.user, {
+        id: userId,
+        username: usernames[0],
+        name: "방장",
+      });
+      assert.equal(
+        (await pool.query("select email from lotr_users where id=$1", [userId]))
+          .rows[0].email,
+        null,
+      );
+      await owner
+        .post("/api/auth/signup")
+        .set("Origin", "http://test.local")
+        .send({
+          username: usernames[0].toUpperCase(),
+          name: "중복",
+          password: "long-test-password",
+        })
+        .expect(409);
       assert.match(first.headers["set-cookie"][0], /HttpOnly/);
       assert.match(first.headers["set-cookie"][0], /SameSite=Lax/);
       const second = await other
         .post("/api/auth/signup")
         .set("Origin", "http://test.local")
-        .send({ email: emails[1], password: "long-test-password" })
+        .send({
+          username: usernames[1],
+          name: "참여자",
+          password: "long-test-password",
+        })
         .expect(200);
       const otherId = second.body.user.id;
       const deck = {
@@ -168,17 +195,21 @@ test(
       await owner
         .post("/api/auth/login")
         .set("Origin", "http://test.local")
-        .send({ email: emails[0], password: "wrong-password" })
+        .send({ username: usernames[0], password: "wrong-password" })
         .expect(401);
       await owner
         .post("/api/auth/login")
         .set("Origin", "http://test.local")
-        .send({ email: emails[0], password: "long-test-password" })
+        .send({
+          username: usernames[0].toUpperCase(),
+          password: "long-test-password",
+        })
         .expect(200);
     } finally {
-      await pool.query("delete from lotr_users where email=any($1::text[])", [
-        emails,
-      ]);
+      await pool.query(
+        "delete from lotr_users where username=any($1::text[])",
+        [usernames],
+      );
       await pool.end();
     }
   },
