@@ -54,3 +54,6 @@ create table if not exists lotr_room_members (
   primary key (room_id,user_id)
 );
 create index if not exists lotr_room_members_user_idx on lotr_room_members(user_id);
+
+-- Per-account room list deletion preserves shared sessions and deck snapshots.
+alter table lotr_room_members add column if not exists deleted_at timestamptz;

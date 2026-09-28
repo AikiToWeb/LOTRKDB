@@ -36,6 +36,14 @@ test("room API requires login and rejects foreign-origin participation", async (
   });
   await request(app).get("/api/rooms").expect(401);
   await request(app)
+    .delete("/api/rooms/invalid/list")
+    .set("Origin", "http://test.local")
+    .expect(401);
+  await request(app)
+    .post("/api/rooms/invalid/restore")
+    .set("Origin", "http://test.local")
+    .expect(401);
+  await request(app)
     .post("/api/rooms/join")
     .set("Origin", "http://foreign.invalid")
     .send({})
@@ -103,6 +111,32 @@ test(
         code: room.code,
         nickname: "Player",
       }).expect(200);
+      await send(outsider, "delete", `${url}/list`).expect(403);
+      await send(outsider, "post", `${url}/restore`).expect(403);
+      await send(player, "delete", `${url}/list`).expect(200);
+      await send(player, "delete", `${url}/list`).expect(200);
+      assert.deepEqual((await player.get("/api/rooms").expect(200)).body, []);
+      assert.equal(
+        (await player.get("/api/rooms?deleted=true").expect(200)).body[0].id,
+        room.id,
+      );
+      assert.equal(
+        (await host.get("/api/rooms").expect(200)).body[0].id,
+        room.id,
+      );
+      assert.equal(
+        (await host.get(`/api/rooms${url}`).expect(200)).body.members.length,
+        2,
+      );
+      await send(player, "post", `${url}/restore`).expect(200);
+      assert.deepEqual(
+        (await player.get("/api/rooms?deleted=true").expect(200)).body,
+        [],
+      );
+      assert.equal(
+        (await player.get("/api/rooms").expect(200)).body[0].id,
+        room.id,
+      );
       await send(player, "patch", url, { status: "playing" }).expect(403);
       await send(player, "put", `${url}/me`, { deckId: decks[0].id }).expect(
         404,
@@ -146,6 +180,27 @@ test(
         .send({ userId: ids[0], ready: false })
         .expect(409);
       await send(host, "patch", url, { status: "playing" }).expect(200);
+      await send(host, "delete", `${url}/list`).expect(200);
+      assert.deepEqual((await host.get("/api/rooms").expect(200)).body, []);
+      const retained = (await player.get(`/api/rooms${url}`).expect(200)).body;
+      assert.equal(retained.status, "playing");
+      assert.equal(retained.members.length, 2);
+      assert.equal(
+        retained.members.find((m) => m.userId === ids[0]).deck.id,
+        decks[0].id,
+      );
+      assert.equal(
+        retained.members.find((m) => m.userId === ids[0]).ready,
+        true,
+      );
+      await send(host, "post", "/join", {
+        code: room.code,
+        nickname: "Host",
+      }).expect(200);
+      assert.equal(
+        (await host.get("/api/rooms").expect(200)).body[0].id,
+        room.id,
+      );
       await send(player, "put", `${url}/me`, { ready: false }).expect(409);
       await send(outsider, "post", "/join", {
         code: room.code,
@@ -156,6 +211,8 @@ test(
         (await player.get(`/api/rooms${url}`).expect(200)).body.status,
         "finished",
       );
+      await send(player, "delete", `${url}/list`).expect(200);
+      await send(player, "post", `${url}/restore`).expect(200);
       const small = (
         await send(host, "post", "", {
           name: "Capacity test",

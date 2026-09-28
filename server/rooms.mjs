@@ -125,8 +125,8 @@ export function roomRouter({ store, authenticate }) {
       async (req) =>
         (
           await store.pool.query(
-            'select r.id,r.name,r.scenario_id as "scenarioId",r.status,r.max_players as "maxPlayers", (select count(*)::int from lotr_room_members where room_id=r.id) as players from lotr_rooms r join lotr_room_members m on m.room_id=r.id where m.user_id=$1 order by r.created_at desc limit 100',
-            [req.user.id],
+            'select r.id,r.name,r.scenario_id as "scenarioId",r.status,r.max_players as "maxPlayers", (select count(*)::int from lotr_room_members where room_id=r.id) as players from lotr_rooms r join lotr_room_members m on m.room_id=r.id where m.user_id=$1 and (m.deleted_at is not null)=$2 order by r.created_at desc limit 100',
+            [req.user.id, req.query.deleted === "true"],
           )
         ).rows,
     ),
@@ -179,7 +179,13 @@ export function roomRouter({ store, authenticate }) {
             [room.id],
           )
         ).rows;
-        if (members.some((m) => m.user_id === req.user.id)) return room.id;
+        if (members.some((m) => m.user_id === req.user.id)) {
+          await client.query(
+            "update lotr_room_members set deleted_at=null where room_id=$1 and user_id=$2",
+            [room.id, req.user.id],
+          );
+          return room.id;
+        }
         if (room.status !== "waiting")
           fail(409, "대기 중인 방에만 참여할 수 있습니다.");
         if (members.length >= room.max_players)
@@ -291,5 +297,20 @@ export function roomRouter({ store, authenticate }) {
       return { ok: true };
     }),
   );
+  const setListDeletion = (deleted) =>
+    route(async (req) => {
+      await transaction(async (client) => {
+        const { room } = await locked(client, req.params.id, req.user.id);
+        await client.query(
+          "update lotr_room_members set deleted_at=" +
+            (deleted ? "now()" : "null") +
+            " where room_id=$1 and user_id=$2",
+          [room.id, req.user.id],
+        );
+      });
+      return { ok: true };
+    });
+  router.delete("/:id/list", setListDeletion(true));
+  router.post("/:id/restore", setListDeletion(false));
   return router;
 }

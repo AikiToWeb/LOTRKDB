@@ -93,3 +93,32 @@
 .room-summary {
   padding: 20px;
 }
+
+.room-list-heading {
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.room-summary-open {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+.room-summary-open:disabled {
+  color: inherit;
+  opacity: 1;
+  cursor: default;
+}
+.room-summary > .btn {
+  justify-self: start;
+  margin-top: 6px;
+}

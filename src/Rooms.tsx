@@ -1,5 +1,5 @@
 import { scenarioName, scenarioProductName } from "./localization";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Card, Catalog, Deck } from "./types";
 import { renderRequest } from "./render-client";
 import { cardName } from "./CardBrowser";
@@ -61,6 +61,9 @@ export function Rooms({
   onLogin: () => void;
   onCard: (c: Card) => void;
 }) {
+  const [showDeleted, setShowDeleted] = useState(false);
+  const listVersion = useRef(0);
+  const listUrl = showDeleted ? "/rooms?deleted=true" : "/rooms";
   const [list, setList] = useState<Summary[]>([]),
     [room, setRoom] = useState<Room | null>(null),
     [selectedId, setSelectedId] = useState("");
@@ -84,13 +87,14 @@ export function Rooms({
     async function refresh() {
       if (fetching || document.visibilityState === "hidden") return;
       fetching = true;
+      const version = listVersion.current;
       try {
         const data = selectedId
           ? await renderRequest<Room>(`/rooms/${selectedId}`)
-          : await renderRequest<Summary[]>("/rooms");
+          : await renderRequest<Summary[]>(listUrl);
         if (live) {
           if (selectedId) setRoom(data as Room);
-          else setList(data as Summary[]);
+          else if (version === listVersion.current) setList(data as Summary[]);
           setError("");
         }
       } catch (e) {
@@ -107,7 +111,7 @@ export function Rooms({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [selectedId, userId, enabled]);
+  }, [selectedId, userId, enabled, listUrl]);
   async function action(path: string, body: object, method = "POST") {
     setBusy(true);
     setError("");
@@ -119,6 +123,7 @@ export function Rooms({
         method,
       );
       if ("id" in data) {
+        setShowDeleted(false);
         setRoom(data);
         setSelectedId(data.id);
       } else {
@@ -126,6 +131,33 @@ export function Rooms({
         setSelectedId("");
         setList(await renderRequest<Summary[]>("/rooms"));
       }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteFromList(id: string, restore = false) {
+    listVersion.current += 1;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await renderRequest(
+        restore ? `/rooms/${id}/restore` : `/rooms/${id}/list`,
+        { userId },
+        restore ? "POST" : "DELETE",
+      );
+      listVersion.current += 1;
+      setList(await renderRequest<Summary[]>(listUrl));
+      setSelectedId("");
+      setRoom(null);
+      setPreview(null);
+      setMessage(
+        restore
+          ? "방을 복원하였습니다."
+          : "내 목록에서 방을 삭제하였습니다. 삭제한 방에서 복원할 수 있습니다.",
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -276,32 +308,64 @@ export function Rooms({
               </p>
             </form>
           </div>
-          <h2>내가 참여한 방</h2>
+          <div className="room-list-heading">
+            <h2>{showDeleted ? "삭제한 방" : "내가 참여한 방"}</h2>
+            <button
+              className="btn"
+              disabled={busy}
+              onClick={() => {
+                listVersion.current += 1;
+                setList([]);
+                setShowDeleted(!showDeleted);
+                setMessage("");
+              }}
+            >
+              {showDeleted ? "참여한 방으로" : "삭제한 방 보기"}
+            </button>
+          </div>
+          <p className="muted">
+            목록에서 삭제해도 다른 참여자의 방과 등록한 덱은 유지됩니다. 삭제한
+            방은 복원할 수 있습니다.
+          </p>
           {!list.length && (
-            <p>참여한 방이 없습니다. 방을 만들거나 초대 코드를 입력하세요.</p>
+            <p>
+              {showDeleted
+                ? "삭제한 방이 없습니다."
+                : "참여한 방이 없습니다. 방을 만들거나 초대 코드를 입력하세요."}
+            </p>
           )}
           <div className="room-list">
             {list.map((r) => (
-              <button
-                key={r.id}
-                className="panel room-summary"
-                onClick={() => {
-                  setRoom(null);
-                  setSelectedId(r.id);
-                  setPreview(null);
-                }}
-              >
-                <strong>{r.name}</strong>
-                <span>
-                  {scenarioName(
-                    catalog.scenarios.find((s) => s.id === r.scenarioId),
-                    r.scenarioId,
-                  )}
-                </span>
-                <span>
-                  {statusName[r.status]} · {r.players}/{r.maxPlayers}명
-                </span>
-              </button>
+              <article key={r.id} className="panel room-summary">
+                <button
+                  className="room-summary-open"
+                  disabled={busy || showDeleted}
+                  onClick={() => {
+                    setRoom(null);
+                    setSelectedId(r.id);
+                    setPreview(null);
+                  }}
+                >
+                  <strong>{r.name}</strong>
+                  <span>
+                    {scenarioName(
+                      catalog.scenarios.find((s) => s.id === r.scenarioId),
+                      r.scenarioId,
+                    )}
+                  </span>
+                  <span>
+                    {statusName[r.status]} · {r.players}/{r.maxPlayers}명
+                  </span>
+                </button>
+                <button
+                  className="btn small"
+                  disabled={busy}
+                  aria-label={`${r.name} ${showDeleted ? "복원" : "목록에서 삭제"}`}
+                  onClick={() => void deleteFromList(r.id, showDeleted)}
+                >
+                  {showDeleted ? "복원" : "삭제"}
+                </button>
+              </article>
             ))}
           </div>
         </>
@@ -506,6 +570,13 @@ export function Rooms({
             ))}
           </div>
           <div className="button-row room-actions">
+            <button
+              className="btn"
+              disabled={busy}
+              onClick={() => void deleteFromList(room.id)}
+            >
+              내 목록에서 삭제
+            </button>
             {host && room.status === "waiting" && (
               <button
                 className="btn primary"
