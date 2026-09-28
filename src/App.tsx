@@ -210,7 +210,7 @@ type Commit = (value: State) => Promise<void>;
 
 export default function App() {
   const [view, setView] = useState(
-    location.hash.slice(1).split("?")[0] || "home",
+    location.hash.slice(1).split("?")[0] || "cards",
   );
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -224,6 +224,7 @@ export default function App() {
   const [status, setStatus] = useState("로그인 확인 중");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [recovery, setRecovery] = useState(false);
   const [toast, setToast] = useState("");
   const [menu, setMenu] = useState(false);
@@ -252,7 +253,7 @@ export default function App() {
   }, [toast]);
   useEffect(() => {
     const change = () =>
-      setView(location.hash.slice(1).split("?")[0] || "home");
+      setView(location.hash.slice(1).split("?")[0] || "cards");
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
@@ -317,10 +318,12 @@ export default function App() {
       const token = ++active.current;
       setReady(false);
       setUser(next);
+      setAuthChecked(true);
       setEditor(null);
       setChoosingDeck(false);
       setPlay(null);
       setCampaign(null);
+      setDeleteItem(null);
       if (!live) return;
       setState(emptyState());
       baseline.current = emptyState();
@@ -477,7 +480,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className={menu ? "sidebar open" : "sidebar"}>
-        <a className="brand" href="#home" onClick={() => go("home")}>
+        <a
+          className="brand"
+          href={user ? "#home" : "#cards"}
+          onClick={() => go(user ? "home" : "cards")}
+        >
           <span className="ring-mark" />
           <span>
             LOTRKDB<small>THE LORD OF THE RINGS · LCG</small>
@@ -485,7 +492,7 @@ export default function App() {
         </a>
         <div className="nav-label">원정대의 여정</div>
         <nav>
-          {nav.map((n) => (
+          {(user ? nav : nav.filter((n) => n.id === "cards")).map((n) => (
             <a
               key={n.id}
               href={`#${n.id}`}
@@ -564,6 +571,27 @@ export default function App() {
                 다시 시도
               </button>
             </div>
+          ) : !authChecked ? (
+            <div className="loading">로그인 상태를 확인하고 있습니다…</div>
+          ) : !user && view !== "cards" ? (
+            <section
+              className="panel settings-panel"
+              aria-label="로그인이 필요한 메뉴"
+            >
+              <h1>로그인이 필요합니다</h1>
+              <p>
+                카드 도서관은 로그인 없이 조회할 수 있습니다. 덱 생성, 시나리오,
+                공동 방 참여와 기록 관리는 로그인 후 이용해 주세요.
+              </p>
+              <div className="button-row">
+                <button className="btn primary" onClick={() => setAuth(true)}>
+                  로그인 / 회원가입
+                </button>
+                <button className="btn" onClick={() => go("cards")}>
+                  카드 도서관으로 이동
+                </button>
+              </div>
+            </section>
           ) : !catalog ? (
             <div className="loading">
               <span className="ring-mark" />
@@ -1399,7 +1427,7 @@ export default function App() {
           </div>
         </Modal>
       )}
-      {choosingDeck && catalog && (
+      {user && choosingDeck && catalog && (
         <Modal
           title="새 덱 만들기 · 코어 프리셋"
           onClose={() => setChoosingDeck(false)}
@@ -1418,7 +1446,7 @@ export default function App() {
           />
         </Modal>
       )}
-      {editor && catalog && (
+      {user && editor && catalog && (
         <DeckEditor
           initial={editor}
           cards={cards}
@@ -1436,7 +1464,7 @@ export default function App() {
           onDetail={setDetail}
         />
       )}
-      {play && catalog && (
+      {user && play && catalog && (
         <PlayEditor
           initial={play}
           scenarios={scenarios}
@@ -1454,7 +1482,7 @@ export default function App() {
           }}
         />
       )}
-      {campaign && (
+      {user && campaign && (
         <CampaignEditor
           initial={campaign}
           scenarios={scenarios}
@@ -1474,7 +1502,7 @@ export default function App() {
         <PasswordRecovery onClose={() => setRecovery(false)} notify={notify} />
       )}
       {auth && <Auth onClose={() => setAuth(false)} notify={notify} />}
-      {deleteItem && (
+      {user && deleteItem && (
         <Modal title="기록 삭제" onClose={() => setDeleteItem(null)}>
           <p>
             “{deleteItem.name}” 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수
