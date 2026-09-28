@@ -86,3 +86,10 @@
     width: 100%;
   }
 }
+.room-forms > .panel,
+.room-head,
+.room-deck,
+.room-members > .panel,
+.room-summary {
+  padding: 20px;
+}
