@@ -45,6 +45,7 @@ import {
 } from "./domain.mjs";
 import {
   cloud,
+  useRender,
   readCloud,
   readLocal,
   saveCloud,
@@ -246,7 +247,7 @@ export default function App() {
   async function loadCatalog() {
     setLoadError("");
     try {
-      const r = await fetch("/data/catalog.json");
+      const r = await fetch(useRender ? "/api/catalog" : "/data/catalog.json");
       if (!r.ok) throw new Error();
       const data = await r.json();
       if (!Array.isArray(data.cards) || !Array.isArray(data.scenarios))
@@ -268,7 +269,7 @@ export default function App() {
     let live = true;
     async function change(next: { id: string; email?: string } | null) {
       const identity = next?.id ?? null;
-      // Supabase can emit SIGNED_IN on tab focus; preserve open editors.
+      // Repeated session notifications should preserve open editors.
       if (sessionIdentity.current === identity) return;
       sessionIdentity.current = identity;
       const token = ++active.current;
@@ -1083,7 +1084,7 @@ export default function App() {
                       {!cloud && (
                         <p className="muted">
                           온라인 계정 저장소가 아직 연결되지 않았습니다. 배포
-                          설정에 Supabase 연결 정보를 추가한 후 사용할 수
+                          설정에 계정 DB 연결 정보를 추가한 후 사용할 수
                           있습니다.
                         </p>
                       )}
@@ -2887,7 +2888,7 @@ function Auth({
             온라인 계정 저장소가 연결되지 않았습니다.
           </div>
           <p>
-            배포 관리자가 Supabase를 연결하면 모바일과 PC에서 같은 덱과 기록을
+            배포 관리자가 계정 DB를 연결하면 모바일과 PC에서 같은 덱과 기록을
             사용할 수 있습니다. 지금은 게스트 모드로 이 기기에 저장할 수
             있습니다.
           </p>
@@ -2984,17 +2985,27 @@ function Auth({
             >
               {mode === "signup" ? "이미 계정이 있어요" : "회원가입"}
             </button>
-            <button
-              type="button"
-              className="text-btn"
-              onClick={() => {
-                setMode(mode === "reset" ? "login" : "reset");
-                setError("");
-              }}
-            >
-              {mode === "reset" ? "로그인으로 돌아가기" : "비밀번호를 잊었어요"}
-            </button>
+            {!useRender && (
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => {
+                  setMode(mode === "reset" ? "login" : "reset");
+                  setError("");
+                }}
+              >
+                {mode === "reset"
+                  ? "로그인으로 돌아가기"
+                  : "비밀번호를 잊었어요"}
+              </button>
+            )}
           </div>
+          {useRender && (
+            <p className="muted">
+              테스트 서버에서는 이메일 확인과 비밀번호 재설정 메일을 제공하지
+              않습니다.
+            </p>
+          )}
         </form>
       )}
     </Modal>

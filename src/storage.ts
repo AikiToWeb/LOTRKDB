@@ -1,9 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import type { State } from "./types";
 import { emptyState, validateState } from "./domain.mjs";
+import { renderCloud, renderRequest } from "./render-client";
+export const useRender = import.meta.env.VITE_STORAGE_PROVIDER === "render";
 const url = import.meta.env.VITE_SUPABASE_URL,
   key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const cloud = url && key ? createClient(url, key) : null;
+const supabase = url && key ? createClient(url, key) : null;
+export const cloud = useRender ? renderCloud : supabase;
 export const storageKey = (user?: string) => `lotrdb.v1.${user ?? "guest"}`;
 export function readLocal(user?: string): State {
   const raw = localStorage.getItem(storageKey(user));
@@ -33,10 +36,14 @@ export function readPending(
   };
 }
 export async function readCloud(user: string): Promise<State> {
+  if (useRender)
+    return validateState(
+      await renderRequest(`/state?user=${encodeURIComponent(user)}`),
+    );
   if (!cloud) throw new Error("계정 저장소가 연결되지 않았습니다.");
   const results = await Promise.all(
     ["decks", "plays", "campaigns", "collections"].map((t) =>
-      cloud.from(t).select("data").eq("user_id", user),
+      supabase!.from(t).select("data").eq("user_id", user),
     ),
   );
   for (const r of results) if (r.error) throw r.error;
@@ -49,6 +56,10 @@ export async function readCloud(user: string): Promise<State> {
 }
 // Write only changed records. Unrelated edits on another device are never removed.
 export async function saveCloud(next: State, previous: State, user: string) {
+  if (useRender) {
+    await renderRequest("/state", { next, previous, userId: user }, "PUT");
+    return;
+  }
   if (!cloud) throw new Error("계정 저장소가 연결되지 않았습니다.");
   for (const table of ["decks", "plays", "campaigns"] as const) {
     const old = new Map(previous[table].map((v) => [v.id, v]));
@@ -56,16 +67,14 @@ export async function saveCloud(next: State, previous: State, user: string) {
       (v) => JSON.stringify(old.get(v.id)) !== JSON.stringify(v),
     );
     if (changes.length) {
-      const { error } = await cloud
-        .from(table)
-        .upsert(
-          changes.map((v) => ({
-            id: v.id,
-            user_id: user,
-            data: v,
-            updated_at: new Date().toISOString(),
-          })),
-        );
+      const { error } = await supabase!.from(table).upsert(
+        changes.map((v) => ({
+          id: v.id,
+          user_id: user,
+          data: v,
+          updated_at: new Date().toISOString(),
+        })),
+      );
       if (error) throw error;
     }
     const ids = new Set(next[table].map((v) => v.id));
@@ -73,7 +82,7 @@ export async function saveCloud(next: State, previous: State, user: string) {
       .filter((v) => !ids.has(v.id))
       .map((v) => v.id);
     if (deleted.length) {
-      const { error } = await cloud
+      const { error } = await supabase!
         .from(table)
         .delete()
         .eq("user_id", user)
@@ -82,13 +91,11 @@ export async function saveCloud(next: State, previous: State, user: string) {
     }
   }
   if (JSON.stringify(next.owned) !== JSON.stringify(previous.owned)) {
-    const { error } = await cloud
-      .from("collections")
-      .upsert({
-        user_id: user,
-        data: next.owned,
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await supabase!.from("collections").upsert({
+      user_id: user,
+      data: next.owned,
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw error;
   }
 }
