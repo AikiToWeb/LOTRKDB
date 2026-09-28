@@ -4,7 +4,7 @@ export const koreanProducts = [
   {
     code: "TDoM",
     name_ko: "어둠숲의 암흑 시나리오 확장",
-    scenarioIds: ["100", "101"],
+    scenarioIds: ["131", "132"],
   },
   {
     code: "EMCE",

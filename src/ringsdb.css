@@ -670,3 +670,6 @@ footer {
     white-space: normal;
   }
 }
+.scenario-card .eyebrow {
+  display: block;
+}

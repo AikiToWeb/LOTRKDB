@@ -34,6 +34,12 @@ test("four Korean products are distinct and the hero expansion has 209 physical 
   );
 });
 test("reprint products keep scenario IDs and importing the aliases is idempotent", () => {
+  assert.deepEqual(
+    catalog.scenarios
+      .filter((s) => s.koreanProducts?.some((p) => p.code === "TDoM"))
+      .map((s) => s.pack),
+    ["The Dark of Mirkwood", "The Dark of Mirkwood"],
+  );
   for (const product of koreanProducts) {
     assert.deepEqual(
       catalog.scenarios
