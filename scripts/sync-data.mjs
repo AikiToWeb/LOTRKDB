@@ -1,4 +1,5 @@
 import { mkdir, writeFile, rename } from "node:fs/promises";
+import { addKoreanProducts } from "./korean-products.mjs";
 const base = "https://ringsdb.com";
 async function get(url, json = true) {
   const r = await fetch(url, { signal: AbortSignal.timeout(60000) });
@@ -74,6 +75,7 @@ async function main() {
     syncedAt: new Date().toISOString(),
     sources: [`${base}/api/`, "https://github.com/seastan/ringsdb"],
   };
+  addKoreanProducts(catalog);
   await mkdir("public/data", { recursive: true });
   await writeFile("public/data/catalog.tmp.json", JSON.stringify(catalog));
   await rename("public/data/catalog.tmp.json", "public/data/catalog.json");

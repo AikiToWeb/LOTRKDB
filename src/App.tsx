@@ -1995,10 +1995,12 @@ function ScenarioLibrary({
   const packs = [...new Set(scenarios.map((s) => s.pack))];
   const filtered = scenarios.filter(
     (s) =>
-      `${s.name} ${questKo[s.name] ?? ""}`
+      `${s.name} ${questKo[s.name] ?? ""} ${s.koreanProducts?.map((p) => p.name).join(" ") ?? ""}`
         .toLowerCase()
         .includes(q.toLowerCase()) &&
-      (!pack || s.pack === pack) &&
+      (!pack ||
+        s.pack === pack ||
+        s.koreanProducts?.some((p) => `ko:${p.code}` === pack)) &&
       (!filter ||
         (filter === "done"
           ? plays.some((p) => p.scenarioId === s.id && p.result === "win")
@@ -2026,6 +2028,11 @@ function ScenarioLibrary({
             onChange={(e) => setPack(e.target.value)}
           >
             <option value="">모든 확장팩</option>
+            <optgroup label="한글판 제품">
+              <option value="ko:RevCore">코어 (개정판)</option>
+              <option value="ko:TDoM">어둠숲의 암흑 시나리오 확장</option>
+              <option value="ko:EMCE">회색산맥 캠페인 확장</option>
+            </optgroup>
             {packs.map((p) => (
               <option key={p}>{p}</option>
             ))}
@@ -2054,7 +2061,9 @@ function ScenarioLibrary({
                   {wins ? "승리" : logs.length ? "도전 중" : "미도전"}
                 </span>
               </div>
-              <p className="eyebrow">{s.pack}</p>
+              <p className="eyebrow">
+                {s.koreanProducts?.map((p) => p.name).join(" · ") || s.pack}
+              </p>
               <h3>{questKo[s.name] ?? s.name}</h3>
               {questKo[s.name] && <p>{s.name}</p>}
               <div className="scenario-bottom">
@@ -2612,7 +2621,11 @@ function Collection({
       </div>
       <div className="collection-grid">
         {packs
-          .filter((p) => p.name.toLowerCase().includes(q.toLowerCase()))
+          .filter((p) =>
+            `${p.name} ${p.name_ko || ""}`
+              .toLowerCase()
+              .includes(q.toLowerCase()),
+          )
           .map((p) => (
             <label
               className={`collection-item ${owned.includes(p.code) ? "selected" : ""}`}
@@ -2631,8 +2644,8 @@ function Collection({
                 }
               />
               <div>
-                <strong>{p.name}</strong>
-                <small>{p.code}</small>
+                <strong>{p.name_ko || p.name}</strong>
+                <small>{p.koreanEdition ? `한글판 · ${p.name}` : p.code}</small>
               </div>
               {owned.includes(p.code) && <Check size={18} />}
             </label>

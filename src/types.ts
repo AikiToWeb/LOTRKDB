@@ -32,6 +32,8 @@ export type Card = {
 export type Pack = {
   code: string;
   name: string;
+  name_ko?: string;
+  koreanEdition?: boolean;
   cycle_code?: string;
   position?: number;
 };
@@ -39,6 +41,7 @@ export type Scenario = {
   id: string;
   name: string;
   pack: string;
+  koreanProducts?: { code: string; name: string }[];
   difficulty?: number;
   description?: string;
   source?: string;

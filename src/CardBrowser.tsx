@@ -291,13 +291,18 @@ export function CardBrowser({
                 if (window.innerWidth <= 800) setSetsOpen(false);
               }}
             >
-              {p.name}
+              {p.name_ko || p.name}
+              {p.koreanEdition && <span> · 한글판</span>}
               {owned.includes(p.code) && <span> · 보유</span>}
             </button>
           ))}
         </details>
       </aside>
       <div className="card-browser-main">
+        <p className="muted">
+          한글판 제품: 코어 · 어둠숲의 암흑 · 회색산맥 캠페인 · 회색산맥 영웅.
+          카드 이미지와 효과 번역의 출처는 카드별로 표시합니다.
+        </p>
         <section className="filter-panel" aria-label="카드 검색 필터">
           <label className="search-field">
             <Search size={18} />
