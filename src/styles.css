@@ -2201,3 +2201,64 @@ footer a {
     padding: 12px;
   }
 }
+.builder-layout .builder-card-row {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px 4px;
+}
+.builder-card-image {
+  width: 86px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: #edf0e9;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.builder-card-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 5 / 7;
+  object-fit: contain;
+}
+.builder-card-image .image-fallback,
+.builder-card-missing {
+  min-height: 120px;
+  font-size: 11px;
+}
+.builder-card-image:focus-visible {
+  outline: 3px solid #337eae;
+  outline-offset: 2px;
+}
+.builder-card-info {
+  min-width: 0;
+}
+.builder-card-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.builder-card-controls .icon-btn {
+  background: #eef3e8;
+  border: 1px solid #dbe3d5;
+  min-width: 36px;
+  min-height: 36px;
+}
+.builder-results {
+  max-height: 440px;
+}
+.deck-selection {
+  max-height: 540px;
+}
+@media (max-width: 600px) {
+  .builder-layout .builder-card-row {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+  .builder-card-image {
+    width: 76px;
+  }
+}

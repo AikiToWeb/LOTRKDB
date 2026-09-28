@@ -1774,36 +1774,51 @@ function DeckEditor({
               </label>
             </div>
             <small className="muted">
-              {filtered.length}장 검색됨 · 카드 이름을 눌러 한국어 효과 확인
+              {filtered.length}장 검색됨 · 카드 이미지나 이름을 눌러 크게 보기 ·
+              한국어 효과 확인
             </small>
             <div className="builder-results">
               {filtered
                 .slice((builderPage - 1) * 40, builderPage * 40)
                 .map((c) => (
-                  <div className="card-row" key={c.code}>
+                  <div className="card-row builder-card-row" key={c.code}>
                     <button
                       type="button"
-                      className="card-name"
+                      className="builder-card-image"
+                      aria-label={`${cardName(c)} 이미지 크게 보기 · ${c.code}`}
                       onClick={() => onDetail(c)}
                     >
-                      <strong>{cardName(c)}</strong>
-                      <small>
-                        {c.name} · {spheres[c.sphere_code]} ·{" "}
-                        {c.type_code === "hero"
-                          ? `위협 ${c.threat}`
-                          : `비용 ${c.cost ?? "—"}`}
-                      </small>
+                      <CardImage card={c} />
                     </button>
-                    <span className="quantity">{deck.slots[c.code] ?? 0}</span>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      aria-label={`${c.name} 추가`}
-                      disabled={busy}
-                      onClick={() => quantity(c, 1)}
-                    >
-                      <Plus size={17} />
-                    </button>
+                    <div className="builder-card-info">
+                      <button
+                        type="button"
+                        className="card-name"
+                        onClick={() => onDetail(c)}
+                      >
+                        <strong>{cardName(c)}</strong>
+                        <small>
+                          {c.name} · {spheres[c.sphere_code]} ·{" "}
+                          {c.type_code === "hero"
+                            ? `위협 ${c.threat}`
+                            : `비용 ${c.cost ?? "—"}`}
+                        </small>
+                      </button>
+                      <div className="builder-card-controls">
+                        <span className="quantity">
+                          등록 {deck.slots[c.code] ?? 0}장
+                        </span>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`${c.name} 추가`}
+                          disabled={busy}
+                          onClick={() => quantity(c, 1)}
+                        >
+                          <Plus size={17} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ))}
               {!filtered.length && (
@@ -1843,43 +1858,59 @@ function DeckEditor({
                 .map(([code, n]) => {
                   const c = cards.find((c) => c.code === code);
                   return (
-                    <div className="card-row" key={code}>
-                      <button
-                        type="button"
-                        className="card-name"
-                        onClick={() => c && onDetail(c)}
-                      >
-                        <strong>{c ? cardName(c) : code}</strong>
-                        <small>
-                          {c ? types[c.type_code] : "알 수 없는 카드"}
-                        </small>
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label={`${c?.name ?? code} 수량 줄이기`}
-                        disabled={busy}
-                        onClick={() => {
-                          if (c) quantity(c, -1);
-                          else {
-                            const slots = { ...deck.slots };
-                            delete slots[code];
-                            setDeck({ ...deck, slots });
-                          }
-                        }}
-                      >
-                        −
-                      </button>
-                      <span>{n}</span>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        aria-label={`${c?.name ?? code} 수량 늘리기`}
-                        disabled={busy || !c}
-                        onClick={() => c && quantity(c, 1)}
-                      >
-                        <Plus size={16} />
-                      </button>
+                    <div className="card-row builder-card-row" key={code}>
+                      {c ? (
+                        <button
+                          type="button"
+                          className="builder-card-image"
+                          aria-label={`선택한 ${cardName(c)} 이미지 크게 보기 · ${code}`}
+                          onClick={() => onDetail(c)}
+                        >
+                          <CardImage card={c} />
+                        </button>
+                      ) : (
+                        <div className="builder-card-missing">이미지 없음</div>
+                      )}
+                      <div className="builder-card-info">
+                        <button
+                          type="button"
+                          className="card-name"
+                          onClick={() => c && onDetail(c)}
+                        >
+                          <strong>{c ? cardName(c) : code}</strong>
+                          <small>
+                            {c ? types[c.type_code] : "알 수 없는 카드"}
+                          </small>
+                        </button>
+                        <div className="builder-card-controls">
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            aria-label={`${c?.name ?? code} 수량 줄이기`}
+                            disabled={busy}
+                            onClick={() => {
+                              if (c) quantity(c, -1);
+                              else {
+                                const slots = { ...deck.slots };
+                                delete slots[code];
+                                setDeck({ ...deck, slots });
+                              }
+                            }}
+                          >
+                            −
+                          </button>
+                          <span>{n}</span>
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            aria-label={`${c?.name ?? code} 수량 늘리기`}
+                            disabled={busy || !c}
+                            onClick={() => c && quantity(c, 1)}
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   );
                 })
