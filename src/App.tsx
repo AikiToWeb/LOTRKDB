@@ -222,6 +222,7 @@ export default function App() {
     name: string;
   } | null>(null);
   const baseline = useRef<State>(emptyState());
+  const sessionIdentity = useRef<string | null | undefined>(undefined);
   const active = useRef(0);
   const lock = useRef(false);
   function notify(message: string) {
@@ -266,6 +267,10 @@ export default function App() {
   useEffect(() => {
     let live = true;
     async function change(next: { id: string; email?: string } | null) {
+      const identity = next?.id ?? null;
+      // Supabase can emit SIGNED_IN on tab focus; preserve open editors.
+      if (sessionIdentity.current === identity) return;
+      sessionIdentity.current = identity;
       const token = ++active.current;
       setReady(false);
       setUser(next);

@@ -1625,12 +1625,14 @@ footer a {
 }
 @media (max-width: 760px) {
   .sidebar {
+    visibility: hidden;
     transform: translateX(-100%);
     transition: transform 0.2s;
     width: 252px;
     padding: 30px 22px;
   }
   .sidebar.open {
+    visibility: visible;
     transform: translateX(0);
   }
   .brand {
