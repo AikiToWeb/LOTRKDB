@@ -1,3 +1,4 @@
+import { cardProductName, productName } from "./localization";
 import { useEffect, useMemo, useState } from "react";
 import { Search, ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
 import type { Card, Catalog } from "./types";
@@ -90,7 +91,12 @@ export function CardPreview({
       </div>
       <div className="preview-copy">
         <h3>{cardName(card)}</h3>
-        <p className="english-name">{card.name}</p>
+        {card.name_ko && (
+          <details>
+            <summary>영문 명칭 보기</summary>
+            <p lang="en">{card.name}</p>
+          </details>
+        )}
         <div className="button-row">
           <span className={`sphere ${card.sphere_code}`}>
             {sphereNames[card.sphere_code]}
@@ -291,7 +297,7 @@ export function CardBrowser({
                 if (window.innerWidth <= 800) setSetsOpen(false);
               }}
             >
-              {p.name_ko || p.name}
+              {productName(p.name, p.code, catalog.packs)}
               {p.koreanEdition && <span> · 한글판</span>}
               {owned.includes(p.code) && <span> · 보유</span>}
             </button>
@@ -454,9 +460,7 @@ export function CardBrowser({
                               {c.is_unique ? "◆ " : ""}
                               {cardName(c)}
                             </strong>
-                            <span>
-                              {c.name} · {c.code}
-                            </span>
+                            <span>{c.code}</span>
                           </button>
                         </td>
                         <td>
@@ -471,7 +475,7 @@ export function CardBrowser({
                             .map((v) => v ?? "—")
                             .join(" / ")}
                         </td>
-                        <td>{c.pack_name}</td>
+                        <td>{cardProductName(c, catalog.packs)}</td>
                       </tr>
                     ))}
                   </tbody>

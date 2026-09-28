@@ -1,3 +1,10 @@
+import {
+  localizedName,
+  scenarioName,
+  scenarioProductName,
+  scenarioSearchText,
+  productName,
+} from "./localization";
 import { registerCardSearch } from "./webmcp";
 import { Rooms } from "./Rooms";
 import { DeckPresets } from "./DeckPresets";
@@ -120,11 +127,6 @@ const korean: Record<string, string> = {
   "Frodo Baggins": "프로도 배긴스",
   "Sam Gamgee": "샘 갬지",
 };
-const questKo: Record<string, string> = {
-  "Passage Through Mirkwood": "어둠숲 통과",
-  "Journey Along the Anduin": "안두인 강을 따라서",
-  "Escape from Dol Guldur": "돌 굴두르 탈출",
-};
 function download(name: string, value: unknown) {
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }),
@@ -193,13 +195,13 @@ function CardImage({ card }: { card: Card }) {
     <img
       loading="lazy"
       src={card.image_ko || new URL(card.imagesrc!, "https://ringsdb.com").href}
-      alt={`${card.name} 카드`}
+      alt={`${cardName(card)} 카드`}
       onError={() => setFailed(true)}
     />
   ) : (
     <div className="image-fallback">
       <Layers />
-      <span>{card.name}</span>
+      <span>{cardName(card)}</span>
     </div>
   );
 }
@@ -673,8 +675,12 @@ export default function App() {
                                   진행 중 · {p.rounds}라운드
                                 </span>
                                 <h3>
-                                  {scenarios.find((s) => s.id === p.scenarioId)
-                                    ?.name ?? p.scenarioId}
+                                  {scenarioName(
+                                    scenarios.find(
+                                      (s) => s.id === p.scenarioId,
+                                    ),
+                                    p.scenarioId,
+                                  )}
                                 </h3>
                                 <p>{p.deckName || "덱 미지정"}</p>
                               </div>
@@ -692,9 +698,9 @@ export default function App() {
                           <div className="journey-row">
                             <div className="quest-number">01</div>
                             <div>
-                              <span className="badge gold">CORE SET</span>
+                              <span className="badge gold">코어 (개정판)</span>
                               <h3>어둠숲 통과</h3>
-                              <p>Passage Through Mirkwood</p>
+                              <p>첫 번째 시나리오</p>
                             </div>
                             <button
                               className="icon-btn"
@@ -785,7 +791,7 @@ export default function App() {
                           <div className="hero-info">
                             <Sphere code={c.sphere_code} />
                             <h3>{cardName(c)}</h3>
-                            <p>{c.name}</p>
+                            <p>{types[c.type_code]}</p>
                             <div className="hero-stats">
                               <span>
                                 <Flag size={15} />
@@ -921,7 +927,7 @@ export default function App() {
                                 .map((c) => (
                                   <div key={c!.code}>
                                     <CardImage card={c!} />
-                                    <span>{korean[c!.name] ?? c!.name}</span>
+                                    <span>{cardName(c!)}</span>
                                   </div>
                                 ))}
                             </div>
@@ -1120,9 +1126,10 @@ export default function App() {
                       setDeleteItem({
                         kind: "plays",
                         id: p.id,
-                        name:
-                          scenarios.find((s) => s.id === p.scenarioId)?.name ??
+                        name: scenarioName(
+                          scenarios.find((s) => s.id === p.scenarioId),
                           "플레이 기록",
+                        ),
                       })
                     }
                     disabled={!ready || busy}
@@ -1371,7 +1378,13 @@ export default function App() {
                 </span>
                 {detail.is_unique && <span className="badge gold">고유</span>}
               </div>
-              <h3>{detail.name}</h3>
+              <h3>{cardName(detail)}</h3>
+              {detail.name_ko && (
+                <details>
+                  <summary>영문 명칭 보기</summary>
+                  <p lang="en">{detail.name}</p>
+                </details>
+              )}
               <p>{detail.traits_ko || detail.traits}</p>
               <div className="card-values">
                 {[
@@ -1408,7 +1421,7 @@ export default function App() {
                   ]
                 ).map((p) => (
                   <li key={p.pack_code}>
-                    {p.pack_name}
+                    {productName(p.pack_name, p.pack_code, catalog?.packs)}
                     {state.owned.includes(p.pack_code) && (
                       <span className="badge">보유</span>
                     )}
@@ -1659,7 +1672,9 @@ function DeckEditor({
     setError("");
     const n = (deck.slots[c.code] ?? 0) + delta;
     if (n > (c.deck_limit ?? 3)) {
-      setError(`${c.name} 카드의 최대 수량은 ${c.deck_limit ?? 3}장입니다.`);
+      setError(
+        `${cardName(c)} 카드의 최대 수량은 ${c.deck_limit ?? 3}장입니다.`,
+      );
       return;
     }
     if (
@@ -1798,7 +1813,7 @@ function DeckEditor({
                       >
                         <strong>{cardName(c)}</strong>
                         <small>
-                          {c.name} · {spheres[c.sphere_code]} ·{" "}
+                          {types[c.type_code]} · {spheres[c.sphere_code]} ·{" "}
                           {c.type_code === "hero"
                             ? `위협 ${c.threat}`
                             : `비용 ${c.cost ?? "—"}`}
@@ -1811,7 +1826,7 @@ function DeckEditor({
                         <button
                           type="button"
                           className="icon-btn"
-                          aria-label={`${c.name} 추가`}
+                          aria-label={`${cardName(c)} 추가`}
                           disabled={busy}
                           onClick={() => quantity(c, 1)}
                         >
@@ -1886,7 +1901,7 @@ function DeckEditor({
                           <button
                             type="button"
                             className="icon-btn"
-                            aria-label={`${c?.name ?? code} 수량 줄이기`}
+                            aria-label={`${c ? cardName(c) : code} 수량 줄이기`}
                             disabled={busy}
                             onClick={() => {
                               if (c) quantity(c, -1);
@@ -1903,7 +1918,7 @@ function DeckEditor({
                           <button
                             type="button"
                             className="icon-btn"
-                            aria-label={`${c?.name ?? code} 수량 늘리기`}
+                            aria-label={`${c ? cardName(c) : code} 수량 늘리기`}
                             disabled={busy || !c}
                             onClick={() => c && quantity(c, 1)}
                           >
@@ -2091,9 +2106,7 @@ function ScenarioLibrary({
   const packs = [...new Set(scenarios.map((s) => s.pack))];
   const filtered = scenarios.filter(
     (s) =>
-      `${s.name} ${questKo[s.name] ?? ""} ${s.koreanProducts?.map((p) => p.name).join(" ") ?? ""}`
-        .toLowerCase()
-        .includes(q.toLowerCase()) &&
+      scenarioSearchText(s).includes(q.toLowerCase()) &&
       (!pack ||
         s.pack === pack ||
         s.koreanProducts?.some((p) => `ko:${p.code}` === pack)) &&
@@ -2130,7 +2143,9 @@ function ScenarioLibrary({
               <option value="ko:EMCE">회색산맥 캠페인 확장</option>
             </optgroup>
             {packs.map((p) => (
-              <option key={p}>{p}</option>
+              <option key={p} value={p}>
+                {localizedName(p)}
+              </option>
             ))}
           </select>
           <select
@@ -2157,11 +2172,9 @@ function ScenarioLibrary({
                   {wins ? "승리" : logs.length ? "도전 중" : "미도전"}
                 </span>
               </div>
-              <p className="eyebrow">
-                {s.koreanProducts?.map((p) => p.name).join(" · ") || s.pack}
-              </p>
-              <h3>{questKo[s.name] ?? s.name}</h3>
-              {questKo[s.name] && <p>{s.name}</p>}
+              <p className="eyebrow">{scenarioProductName(s)}</p>
+              <h3>{scenarioName(s)}</h3>
+
               <div className="scenario-bottom">
                 <span>
                   {logs.length}회 플레이 · {wins}회 승리
@@ -2235,10 +2248,8 @@ function ScenarioDetail({
     return () => abort.abort();
   }, [scenario.id]);
   return (
-    <Modal title={questKo[scenario.name] ?? scenario.name} onClose={onClose}>
-      <p>
-        {scenario.name} · {scenario.pack}
-      </p>
+    <Modal title={scenarioName(scenario)} onClose={onClose}>
+      <p>{scenarioProductName(scenario)}</p>
       {error ? (
         <div className="notice error">{error}</div>
       ) : !data ? (
@@ -2248,7 +2259,7 @@ function ScenarioDetail({
           <h3>필요한 조우 세트</h3>
           <ul>
             {data.encounters?.map((e) => (
-              <li key={e.id}>{e.name}</li>
+              <li key={e.id}>{localizedName(e.name)}</li>
             ))}
           </ul>
           <h3>일반 모드 조우 덱</h3>
@@ -2306,11 +2317,10 @@ function JournalList({
             onClick={() => onEdit(p)}
           >
             <strong>
-              {questKo[
-                scenarios.find((s) => s.id === p.scenarioId)?.name ?? ""
-              ] ??
-                scenarios.find((s) => s.id === p.scenarioId)?.name ??
-                p.scenarioId}
+              {scenarioName(
+                scenarios.find((s) => s.id === p.scenarioId),
+                p.scenarioId,
+              )}
             </strong>
             <small>
               {p.deckName || "덱 미지정"} · {p.players}인 ·{" "}
@@ -2361,7 +2371,7 @@ function Journal({
     .filter(
       (p) =>
         (!result || p.result === result) &&
-        `${scenarios.find((s) => s.id === p.scenarioId)?.name ?? ""} ${p.deckName} ${p.notes}`
+        `${scenarioSearchText(scenarios.find((s) => s.id === p.scenarioId))} ${p.deckName} ${p.notes}`
           .toLowerCase()
           .includes(q.toLowerCase()),
     )
@@ -2447,7 +2457,7 @@ function PlayEditor({
           >
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
-                {questKo[s.name] ?? s.name} · {s.pack}
+                {scenarioName(s)} · {scenarioProductName(s)}
               </option>
             ))}
           </select>
@@ -2637,11 +2647,7 @@ function CampaignEditor({
         </label>
         <div className="campaign-pick">
           {scenarios
-            .filter((s) =>
-              `${s.name} ${questKo[s.name] ?? ""}`
-                .toLowerCase()
-                .includes(q.toLowerCase()),
-            )
+            .filter((s) => scenarioSearchText(s).includes(q.toLowerCase()))
             .map((s) => (
               <label className="checkbox" key={s.id}>
                 <input
@@ -2656,7 +2662,7 @@ function CampaignEditor({
                     })
                   }
                 />
-                {questKo[s.name] ?? s.name}
+                {scenarioName(s)}
               </label>
             ))}
         </div>
@@ -2718,7 +2724,7 @@ function Collection({
       <div className="collection-grid">
         {packs
           .filter((p) =>
-            `${p.name} ${p.name_ko || ""}`
+            `${p.name} ${productName(p.name, p.code, packs)}`
               .toLowerCase()
               .includes(q.toLowerCase()),
           )
@@ -2740,8 +2746,8 @@ function Collection({
                 }
               />
               <div>
-                <strong>{p.name_ko || p.name}</strong>
-                <small>{p.koreanEdition ? `한글판 · ${p.name}` : p.code}</small>
+                <strong>{productName(p.name, p.code, packs)}</strong>
+                <small>{p.koreanEdition ? `한글판 · ${p.code}` : p.code}</small>
               </div>
               {owned.includes(p.code) && <Check size={18} />}
             </label>

@@ -51,7 +51,8 @@ export function registerCardSearch(cards: Card[]) {
         count: results.length,
         cards: results.slice(0, 30).map((c) => ({
           code: c.code,
-          name: c.name,
+          name: c.name_ko || c.name,
+          englishName: c.name,
           type: c.type_code,
           sphere: c.sphere_code,
           url: `https://ringsdb.com/card/${c.code}`,

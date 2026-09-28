@@ -18,22 +18,25 @@ export function deckStats(slots, cards) {
       continue;
     }
     if (!Number.isInteger(count) || count < 1) {
-      warnings.push(`${c.name}: 잘못된 수량`);
+      warnings.push(`${c.name_ko || c.name}: 잘못된 수량`);
       continue;
     }
     if (count > (c.deck_limit ?? 3))
-      warnings.push(`${c.name}: 카드 수량 제한 초과`);
+      warnings.push(`${c.name_ko || c.name}: 카드 수량 제한 초과`);
     if (c.type_code === "hero") {
       heroes += count;
       threat += (c.threat ?? 0) * count;
       if (heroNames.has(c.name))
-        warnings.push(`${c.name}: 같은 이름의 영웅 중복`);
+        warnings.push(`${c.name_ko || c.name}: 같은 이름의 영웅 중복`);
       heroNames.add(c.name);
     } else if (
       ["ally", "attachment", "event", "player-side-quest"].includes(c.type_code)
     )
       total += count;
-    else warnings.push(`${c.name}: 일반 플레이어 덱에 넣을 수 없는 카드`);
+    else
+      warnings.push(
+        `${c.name_ko || c.name}: 일반 플레이어 덱에 넣을 수 없는 카드`,
+      );
   }
   if (heroes < 1 || heroes > 3)
     warnings.push("일반 덱은 영웅 1~3명으로 구성합니다.");

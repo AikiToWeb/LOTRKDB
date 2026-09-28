@@ -38,6 +38,7 @@ export type Pack = {
   position?: number;
 };
 export type Scenario = {
+  name_ko?: string;
   id: string;
   name: string;
   pack: string;

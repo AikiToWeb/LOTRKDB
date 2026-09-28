@@ -1,3 +1,4 @@
+import { scenarioName, scenarioProductName } from "./localization";
 import { useEffect, useState } from "react";
 import type { Card, Catalog, Deck } from "./types";
 import { renderRequest } from "./render-client";
@@ -213,9 +214,7 @@ export function Rooms({
                 >
                   {catalog.scenarios.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.koreanProducts?.map((p) => p.name).join(" · ") ||
-                        s.pack}{" "}
-                      · {s.name}
+                      {scenarioProductName(s)} · {scenarioName(s)}
                     </option>
                   ))}
                 </select>
@@ -290,7 +289,10 @@ export function Rooms({
               >
                 <strong>{r.name}</strong>
                 <span>
-                  {catalog.scenarios.find((s) => s.id === r.scenarioId)?.name}
+                  {scenarioName(
+                    catalog.scenarios.find((s) => s.id === r.scenarioId),
+                    r.scenarioId,
+                  )}
                 </span>
                 <span>
                   {statusName[r.status]} · {r.players}/{r.maxPlayers}명
@@ -305,7 +307,12 @@ export function Rooms({
           <section className="panel room-head">
             <div>
               <h2>{room.name}</h2>
-              <p>{room.scenarioName}</p>
+              <p>
+                {scenarioName(
+                  catalog.scenarios.find((s) => s.id === room.scenarioId),
+                  room.scenarioName,
+                )}
+              </p>
               <span className="badge">
                 {statusName[room.status]} · {room.members.length}/
                 {room.maxPlayers}명
