@@ -40,8 +40,8 @@ jobs:
                       if response.status != 200:
                           raise RuntimeError(f"HTTP {response.status}")
                       result = json.load(response)
-                  if result.get("database") != "connected":
-                      raise RuntimeError("PostgreSQL is not ready")
+                  if result.get("status") != "ok" or result.get("database") != "connected":
+                      raise RuntimeError("API or PostgreSQL is not ready")
                   print("Render API returned HTTP 200; PostgreSQL connected.")
                   break
               except Exception as error:
