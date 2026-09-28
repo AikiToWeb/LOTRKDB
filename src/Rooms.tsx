@@ -45,6 +45,7 @@ export function Rooms({
   decks,
   userId,
   playerName,
+  initialScenarioId,
   enabled,
   saved,
   onLogin,
@@ -54,6 +55,7 @@ export function Rooms({
   decks: Deck[];
   userId?: string;
   playerName?: string;
+  initialScenarioId?: string;
   enabled: boolean;
   saved: boolean;
   onLogin: () => void;
@@ -64,7 +66,7 @@ export function Rooms({
     [selectedId, setSelectedId] = useState("");
   const [name, setName] = useState("우리 원정대"),
     [nickname, setNickname] = useState(playerName || ""),
-    [scenarioId, setScenarioId] = useState("1"),
+    [scenarioId, setScenarioId] = useState(initialScenarioId || "1"),
     [maxPlayers, setMaxPlayers] = useState(4);
   const [code, setCode] = useState(
     () =>
@@ -149,7 +151,9 @@ export function Rooms({
     );
   const mine = room?.members.find((m) => m.userId === userId),
     host = room?.hostId === userId;
-  const link = room ? `${location.origin}/#rooms?join=${room.code}` : "";
+  const link = room
+    ? `${location.origin}/#scenarios?mode=multi&join=${room.code}`
+    : "";
   return (
     <>
       <p className="muted">
@@ -187,7 +191,7 @@ export function Rooms({
                 });
               }}
             >
-              <h2>시나리오 방 만들기</h2>
+              <h2>다인 플레이 시작</h2>
               <label>
                 방 이름
                 <input
@@ -225,7 +229,7 @@ export function Rooms({
                   value={maxPlayers}
                   onChange={(e) => setMaxPlayers(Number(e.target.value))}
                 >
-                  {[1, 2, 3, 4].map((n) => (
+                  {[2, 3, 4].map((n) => (
                     <option key={n} value={n}>
                       {n}명
                     </option>

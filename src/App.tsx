@@ -94,7 +94,6 @@ const nav = [
   { id: "cards", name: "카드 도서관", icon: Library },
   { id: "decks", name: "나의 덱", icon: Layers },
   { id: "scenarios", name: "시나리오", icon: BookOpen },
-  { id: "rooms", name: "공동 시나리오 방", icon: Shield },
   { id: "journal", name: "플레이 기록", icon: ScrollText },
   { id: "collection", name: "보유 확장팩", icon: Shield },
   { id: "settings", name: "설정 · 백업", icon: Settings },
@@ -210,10 +209,17 @@ function Sphere({ code }: { code: string }) {
 }
 type Commit = (value: State) => Promise<void>;
 
+const scenarioRoute = () =>
+  location.hash.startsWith("#rooms") ||
+  new URLSearchParams(location.hash.split("?")[1] || "").get("mode") ===
+    "multi";
+const currentView = () => {
+  const route = location.hash.slice(1).split("?")[0] || "cards";
+  return route === "rooms" ? "scenarios" : route;
+};
+
 export default function App() {
-  const [view, setView] = useState(
-    location.hash.slice(1).split("?")[0] || "cards",
-  );
+  const [view, setView] = useState(currentView());
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState("");
   const [state, setState] = useState<State>(emptyState());
@@ -233,6 +239,8 @@ export default function App() {
   const [detail, setDetail] = useState<Card | null>(null);
   const [editor, setEditor] = useState<Deck | null>(null);
   const [choosingDeck, setChoosingDeck] = useState(false);
+  const [roomActive, setRoomActive] = useState(scenarioRoute);
+  const [playChoice, setPlayChoice] = useState<string | null>(null);
   const [play, setPlay] = useState<Play | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [auth, setAuth] = useState(false);
@@ -254,14 +262,17 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
-    const change = () =>
-      setView(location.hash.slice(1).split("?")[0] || "cards");
+    const change = () => {
+      setView(currentView());
+      setRoomActive(scenarioRoute());
+    };
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
   const go = (v: string) => {
     location.hash = v;
-    setView(v);
+    setView(currentView());
+    setRoomActive(scenarioRoute());
     setMenu(false);
   };
   async function loadCatalog() {
@@ -324,6 +335,7 @@ export default function App() {
       setEditor(null);
       setChoosingDeck(false);
       setPlay(null);
+      setPlayChoice(null);
       setCampaign(null);
       setDeleteItem(null);
       if (!live) return;
@@ -450,6 +462,13 @@ export default function App() {
     });
   }
   function newPlay(scenarioId = catalog?.scenarios[0]?.id ?? "") {
+    if (!user) {
+      setAuth(true);
+      return;
+    }
+    setPlayChoice(scenarioId);
+  }
+  function startSolo(scenarioId: string) {
     if (!user) {
       setAuth(true);
       return;
@@ -981,123 +1000,138 @@ export default function App() {
                   )}
                 </>
               )}
-              {view === "rooms" && (
-                <>
-                  <PageHeading
-                    eyebrow="PLAY TOGETHER"
-                    title="공동 시나리오 방"
-                    description="방장이 만든 시나리오에 참여하고 각자의 덱을 등록하세요."
-                  />
-                  <Rooms
-                    key={user?.id || "guest"}
-                    catalog={catalog}
-                    decks={state.decks}
-                    userId={user?.id}
-                    playerName={user?.name}
-                    enabled={useRender}
-                    saved={ready && !busy && status !== "저장 실패"}
-                    onLogin={() => setAuth(true)}
-                    onCard={setDetail}
-                  />
-                </>
-              )}
               {view === "scenarios" && (
                 <>
                   <PageHeading
                     eyebrow="QUESTS & CAMPAIGNS"
                     title="시나리오"
-                    description="도전할 시나리오를 고르고 캠페인의 은혜와 부담을 관리하세요."
+                    description="시나리오를 선택하고 싱글 플레이 또는 다인 플레이로 시작하세요."
                   />
-                  <ScenarioLibrary
-                    scenarios={scenarios}
-                    plays={state.plays}
-                    onPlay={newPlay}
-                    disabled={!ready || busy}
-                  />
-                  <div className="section-head">
-                    <h2>나의 캠페인</h2>
+                  <div className="scenario-actions button-row">
                     <button
-                      className="btn"
-                      disabled={!ready || busy}
-                      onClick={() =>
-                        user
-                          ? setCampaign({
-                              id: uid(),
-                              name: "새 캠페인",
-                              notes: "",
-                              scenarioIds: [],
-                              boons: "",
-                              burdens: "",
-                            })
-                          : setAuth(true)
-                      }
+                      className={"btn " + (!roomActive ? "primary" : "")}
+                      onClick={() => go("scenarios")}
                     >
-                      <Plus size={17} />
-                      캠페인 만들기
+                      시나리오 선택
+                    </button>
+                    <button
+                      className={"btn " + (roomActive ? "primary" : "")}
+                      onClick={() => go("scenarios?mode=multi")}
+                    >
+                      참여 중인 다인 플레이 · 초대 코드
                     </button>
                   </div>
-                  {state.campaigns.length ? (
-                    <div className="deck-grid">
-                      {state.campaigns.map((c) => (
-                        <article className="panel saved-deck" key={c.id}>
-                          <div className="panel-head">
-                            <h2>{c.name}</h2>
-                            <button
-                              className="icon-btn"
-                              aria-label={`${c.name} 삭제`}
-                              disabled={!ready || busy}
-                              onClick={() =>
-                                setDeleteItem({
-                                  kind: "campaigns",
-                                  id: c.id,
-                                  name: c.name,
-                                })
-                              }
-                            >
-                              <Trash2 size={17} />
-                            </button>
-                          </div>
-                          <p>
-                            {
-                              c.scenarioIds.filter((id) =>
-                                state.plays.some(
-                                  (p) =>
-                                    p.scenarioId === id &&
-                                    p.campaignId === c.id &&
-                                    p.result === "win",
-                                ),
-                              ).length
-                            }{" "}
-                            / {c.scenarioIds.length} 시나리오 승리
-                          </p>
-                          <progress
-                            value={
-                              c.scenarioIds.filter((id) =>
-                                state.plays.some(
-                                  (p) =>
-                                    p.scenarioId === id &&
-                                    p.campaignId === c.id &&
-                                    p.result === "win",
-                                ),
-                              ).length
-                            }
-                            max={c.scenarioIds.length || 1}
-                          />
-                          <p className="notes-preview">
-                            {c.notes || "캠페인 메모를 남겨보세요."}
-                          </p>
-                          <button
-                            className="btn"
-                            disabled={!ready || busy}
-                            onClick={() => setCampaign(c)}
-                          >
-                            캠페인 관리
-                          </button>
-                        </article>
-                      ))}
-                    </div>
+                  {roomActive ? (
+                    <Rooms
+                      key={(user?.id || "guest") + location.hash}
+                      catalog={catalog}
+                      decks={state.decks}
+                      userId={user?.id}
+                      playerName={user?.name}
+                      initialScenarioId={
+                        new URLSearchParams(
+                          location.hash.split("?")[1] || "",
+                        ).get("scenario") || undefined
+                      }
+                      enabled={useRender}
+                      saved={ready && !busy && status !== "저장 실패"}
+                      onLogin={() => setAuth(true)}
+                      onCard={setDetail}
+                    />
                   ) : (
-                    <p className="muted">등록한 캠페인이 없습니다.</p>
+                    <>
+                      <ScenarioLibrary
+                        scenarios={scenarios}
+                        plays={state.plays}
+                        onPlay={newPlay}
+                        disabled={!ready || busy}
+                      />
+                      <div className="section-head">
+                        <h2>나의 캠페인</h2>
+                        <button
+                          className="btn"
+                          disabled={!ready || busy}
+                          onClick={() =>
+                            user
+                              ? setCampaign({
+                                  id: uid(),
+                                  name: "새 캠페인",
+                                  notes: "",
+                                  scenarioIds: [],
+                                  boons: "",
+                                  burdens: "",
+                                })
+                              : setAuth(true)
+                          }
+                        >
+                          <Plus size={17} />
+                          캠페인 만들기
+                        </button>
+                      </div>
+                      {state.campaigns.length ? (
+                        <div className="deck-grid">
+                          {state.campaigns.map((c) => (
+                            <article className="panel saved-deck" key={c.id}>
+                              <div className="panel-head">
+                                <h2>{c.name}</h2>
+                                <button
+                                  className="icon-btn"
+                                  aria-label={`${c.name} 삭제`}
+                                  disabled={!ready || busy}
+                                  onClick={() =>
+                                    setDeleteItem({
+                                      kind: "campaigns",
+                                      id: c.id,
+                                      name: c.name,
+                                    })
+                                  }
+                                >
+                                  <Trash2 size={17} />
+                                </button>
+                              </div>
+                              <p>
+                                {
+                                  c.scenarioIds.filter((id) =>
+                                    state.plays.some(
+                                      (p) =>
+                                        p.scenarioId === id &&
+                                        p.campaignId === c.id &&
+                                        p.result === "win",
+                                    ),
+                                  ).length
+                                }{" "}
+                                / {c.scenarioIds.length} 시나리오 승리
+                              </p>
+                              <progress
+                                value={
+                                  c.scenarioIds.filter((id) =>
+                                    state.plays.some(
+                                      (p) =>
+                                        p.scenarioId === id &&
+                                        p.campaignId === c.id &&
+                                        p.result === "win",
+                                    ),
+                                  ).length
+                                }
+                                max={c.scenarioIds.length || 1}
+                              />
+                              <p className="notes-preview">
+                                {c.notes || "캠페인 메모를 남겨보세요."}
+                              </p>
+                              <button
+                                className="btn"
+                                disabled={!ready || busy}
+                                onClick={() => setCampaign(c)}
+                              >
+                                캠페인 관리
+                              </button>
+                            </article>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="muted">등록한 캠페인이 없습니다.</p>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -1476,6 +1510,52 @@ export default function App() {
           }}
           onDetail={setDetail}
         />
+      )}
+      {user && playChoice !== null && (
+        <Modal title="플레이 방식 선택" onClose={() => setPlayChoice(null)}>
+          <label className="field">
+            시나리오
+            <select
+              value={playChoice}
+              onChange={(e) => setPlayChoice(e.target.value)}
+            >
+              {scenarios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {scenarioName(s)} · {scenarioProductName(s)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="play-mode-options">
+            <button
+              className="panel play-mode-option"
+              disabled={!ready || busy}
+              onClick={() => {
+                startSolo(playChoice);
+                setPlayChoice(null);
+              }}
+            >
+              <strong>싱글 플레이</strong>
+              <span>1인 · 내 덱을 선택하고 플레이 결과를 기록합니다.</span>
+            </button>
+            <button
+              className="panel play-mode-option"
+              disabled={!useRender || !ready || busy}
+              onClick={() => {
+                go(
+                  "scenarios?mode=multi&scenario=" +
+                    encodeURIComponent(playChoice),
+                );
+                setPlayChoice(null);
+              }}
+            >
+              <strong>다인 플레이</strong>
+              <span>
+                2~4인 · 방을 만들고 초대받은 플레이어가 각자의 덱을 등록합니다.
+              </span>
+            </button>
+          </div>
+        </Modal>
       )}
       {user && play && catalog && (
         <PlayEditor
@@ -2188,7 +2268,7 @@ function ScenarioLibrary({
                     disabled={disabled}
                     onClick={() => onPlay(s.id)}
                   >
-                    기록 <Plus size={14} />
+                    플레이 시작 <Plus size={14} />
                   </button>
                 </div>
               </div>

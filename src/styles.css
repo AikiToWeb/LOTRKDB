@@ -2262,3 +2262,32 @@ footer a {
     width: 76px;
   }
 }
+
+.scenario-actions {
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.play-mode-options {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+.play-mode-option {
+  width: 100%;
+  padding: 22px;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.play-mode-option strong {
+  font-size: 19px;
+}
+.play-mode-option:hover {
+  border-color: #617c47;
+  background: #f0f4e9;
+}
+.play-mode-option span {
+  line-height: 1.6;
+}
