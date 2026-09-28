@@ -62,9 +62,18 @@ try {
       body: { username: actor.username, name: "배포 검증", password },
     });
     actor.id = signup.user.id;
+    assert.equal(signup.user.username, actor.username);
+    assert.equal(signup.user.name, "배포 검증");
+    assert.equal(signup.user.email, undefined);
     assert.ok(actor.cookie);
   }
   const [owner, other] = actors;
+  await call("/api/auth/signup", {
+    method: "POST",
+    expected: 409,
+    body: { username: owner.username.toUpperCase(), name: "중복 검증", password },
+  });
+  checks.push("Native signup uses name and username; duplicate IDs rejected");
   const deck = {
     id: randomUUID(),
     name: "[배포 검증] 원정대",
@@ -118,7 +127,7 @@ try {
   await call("/api/auth/login", {
     actor: owner,
     method: "POST",
-    body: { email: owner.email, password },
+    body: { username: owner.username.toUpperCase(), password },
   });
   assert.deepEqual(
     await call(`/api/state?user=${owner.id}`, { actor: owner }),
