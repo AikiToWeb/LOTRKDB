@@ -14,18 +14,30 @@ export async function initializeDatabase(pool) {
     new URL("./schema.sql", import.meta.url),
     "utf8",
   );
-  await pool.query(schema);
   const raw = await readFile(
     new URL("../public/data/catalog.json", import.meta.url),
     "utf8",
   );
   const hash = createHash("sha256").update(raw).digest("hex");
-  await pool.query(
-    `insert into lotr_catalog (id,data,content_hash) values ('ringsdb',$1::jsonb,$2)
+  const connection = await pool.connect();
+  try {
+    await connection.query("begin");
+    // Serialize startup migrations across processes and CI workers.
+    await connection.query("select pg_advisory_xact_lock(73190241)");
+    await connection.query(schema);
+    await connection.query(
+      `insert into lotr_catalog (id,data,content_hash) values ('ringsdb',$1::jsonb,$2)
  on conflict (id) do update set data=excluded.data,content_hash=excluded.content_hash,updated_at=now()
  where lotr_catalog.content_hash<>excluded.content_hash`,
-    [raw, hash],
-  );
+      [raw, hash],
+    );
+    await connection.query("commit");
+  } catch (error) {
+    await connection.query("rollback");
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 export function stateChanges(nextValue, previousValue) {
   const next = validateState(nextValue),

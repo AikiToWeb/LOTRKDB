@@ -1,4 +1,5 @@
 import { registerCardSearch } from "./webmcp";
+import { Rooms } from "./Rooms";
 import {
   CardBrowser,
   CardRules,
@@ -85,6 +86,7 @@ const nav = [
   { id: "cards", name: "카드 도서관", icon: Library },
   { id: "decks", name: "나의 덱", icon: Layers },
   { id: "scenarios", name: "시나리오", icon: BookOpen },
+  { id: "rooms", name: "공동 시나리오 방", icon: Shield },
   { id: "journal", name: "플레이 기록", icon: ScrollText },
   { id: "collection", name: "보유 확장팩", icon: Shield },
   { id: "settings", name: "설정 · 백업", icon: Settings },
@@ -206,7 +208,9 @@ function Sphere({ code }: { code: string }) {
 type Commit = (value: State) => Promise<void>;
 
 export default function App() {
-  const [view, setView] = useState(location.hash.slice(1) || "home");
+  const [view, setView] = useState(
+    location.hash.slice(1).split("?")[0] || "home",
+  );
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loadError, setLoadError] = useState("");
   const [state, setState] = useState<State>(emptyState());
@@ -241,7 +245,8 @@ export default function App() {
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
-    const change = () => setView(location.hash.slice(1) || "home");
+    const change = () =>
+      setView(location.hash.slice(1).split("?")[0] || "home");
     window.addEventListener("hashchange", change);
     return () => window.removeEventListener("hashchange", change);
   }, []);
@@ -936,6 +941,25 @@ export default function App() {
                       }
                     />
                   )}
+                </>
+              )}
+              {view === "rooms" && (
+                <>
+                  <PageHeading
+                    eyebrow="PLAY TOGETHER"
+                    title="공동 시나리오 방"
+                    description="방장이 만든 시나리오에 참여하고 각자의 덱을 등록하세요."
+                  />
+                  <Rooms
+                    key={user?.id || "guest"}
+                    catalog={catalog}
+                    decks={state.decks}
+                    userId={user?.id}
+                    enabled={useRender}
+                    saved={ready && !busy && !pending}
+                    onLogin={() => setAuth(true)}
+                    onCard={setDetail}
+                  />
                 </>
               )}
               {view === "scenarios" && (

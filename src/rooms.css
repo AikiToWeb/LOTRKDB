@@ -1,0 +1,88 @@
+.room-forms,
+.room-members,
+.room-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+.room-form,
+.room-head,
+.room-deck {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.room-form {
+  flex-direction: column;
+  align-items: stretch;
+}
+.room-form label,
+.room-head label,
+.room-deck label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.room-form input,
+.room-form select,
+.room-head input,
+.room-deck select {
+  max-width: 100%;
+  width: 100%;
+}
+.room-link {
+  flex: 1 1 300px;
+}
+.room-head > div {
+  flex: 1 1 100%;
+}
+.room-alert {
+  background: #fff3df;
+  padding: 14px;
+  border: 1px solid #e3b86a;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.room-alert button {
+  margin-left: 12px;
+}
+.room-summary {
+  text-align: left;
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+  color: inherit;
+}
+.room-members .panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.room-members .btn {
+  margin: 5px 5px 5px 0;
+}
+.room-deck-cards {
+  padding-left: 20px;
+}
+.room-deck-cards button {
+  background: transparent;
+  border: 0;
+  color: #196da7;
+  cursor: pointer;
+  text-align: left;
+}
+.room-actions {
+  margin-top: 20px;
+}
+@media (max-width: 700px) {
+  .room-forms,
+  .room-members,
+  .room-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .room-head label,
+  .room-deck label {
+    width: 100%;
+  }
+}

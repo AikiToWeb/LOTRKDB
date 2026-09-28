@@ -9,6 +9,7 @@ import {
   tokenHash,
 } from "./security.mjs";
 import { stateChanges } from "./database.mjs";
+import { roomRouter } from "./rooms.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const cookieName = "lotr_session";
@@ -180,11 +181,9 @@ export function createApp({
   app.get("/api/state", authenticate, async (req, res, next) => {
     try {
       if (req.query.user !== req.user.id) {
-        res
-          .status(409)
-          .json({
-            error: "로그인 계정이 변경되었습니다. 화면을 새로고침하세요.",
-          });
+        res.status(409).json({
+          error: "로그인 계정이 변경되었습니다. 화면을 새로고침하세요.",
+        });
         return;
       }
       res.json(await store.readState(req.user.id));
@@ -195,11 +194,9 @@ export function createApp({
   app.put("/api/state", authenticate, async (req, res, next) => {
     try {
       if (req.body?.userId !== req.user.id) {
-        res
-          .status(409)
-          .json({
-            error: "로그인 계정이 변경되었습니다. 화면을 새로고침하세요.",
-          });
+        res.status(409).json({
+          error: "로그인 계정이 변경되었습니다. 화면을 새로고침하세요.",
+        });
         return;
       }
       let changes;
@@ -219,6 +216,7 @@ export function createApp({
       next(e);
     }
   });
+  app.use("/api/rooms", roomRouter({ store, authenticate }));
   app.use("/api", (req, res) =>
     res.status(404).json({ error: "API를 찾을 수 없습니다." }),
   );
@@ -234,16 +232,14 @@ export function createApp({
     const status = error.status ?? 500;
     if (status >= 500)
       console.error("Request failed:", error.code ?? error.name);
-    res
-      .status(status)
-      .json({
-        error:
-          status === 413
-            ? "백업 크기는 10MB 이하로 제한됩니다."
-            : status < 500
-              ? error.message
-              : "서버 또는 DB 연결을 확인해 주세요.",
-      });
+    res.status(status).json({
+      error:
+        status === 413
+          ? "백업 크기는 10MB 이하로 제한됩니다."
+          : status < 500
+            ? error.message
+            : "서버 또는 DB 연결을 확인해 주세요.",
+    });
   });
   return app;
 }
