@@ -10,6 +10,7 @@
 - Blueprint: `lotrkdb-test`.
 - 앱 서버와 DB는 Render 내부 네트워크로 연결합니다. DB 외부 접속을 차단했으며 비밀번호·접속 URL을 프런트엔드에 포함하지 않았습니다.
 - 최초 배포 코드: `0e7bdbf`.
+- RingsDB 외관·한국어 카드 업데이트 배포 코드: `a01483b` (Render에서 Live 확인).
 - [웹 서비스 관리](https://dashboard.render.com/web/srv-dasvq9g473hc73e52a10)
 - [DB 관리](https://dashboard.render.com/d/dpg-dasvq08473hc73e518ig-a)
 - [Blueprint 관리](https://dashboard.render.com/blueprint/exs-dasvppbbc2fs73ajuop0)
@@ -31,6 +32,16 @@
 자동 검증은 `npm run test:deployment -- https://lotrkdb.onrender.com`으로 재실행할 수 있습니다. 검사 전용 계정 두 개는 빈 상태로 남겨두며 세션은 로그아웃했습니다. 실제 사용자 기록은 사용하지 않았습니다.
 
 ## 추가 검증
+
+### RingsDB 외관 및 한국어 카드 업데이트
+
+- [GitHub Actions 검증](https://github.com/AikiToWeb/LOTRKDB/actions/runs/36385069578): 실제 PostgreSQL 통합 테스트 포함 12개 테스트 및 production build 통과.
+- 로컬 PC/390px 모바일 브라우저: 한국어 이름·효과 검색, 제품/영역 필터, 목록/이미지 전환, 카드 상세, 모바일 메뉴, 덱 수량 변경 후 상세 열기 확인. 모바일 문서 가로 폭과 스크롤 폭이 모두 375px로 일치해 페이지 가로 넘침이 없습니다. 표는 별도 영역에서 가로 스크롤합니다.
+- 공개 Render: `/api/health` HTTP 200, `database: connected` 확인.
+- 공개 `/data/ko.json`: HTTP 200 JSON, 1,315종 / 검수 101종 확인.
+- 공개 `/images/ko/02116.jpg`: HTTP 200 JPEG 확인.
+- 공개 앱에서 ‘무쇠발 다인’ 검색, 한글 이미지 실제 로드, 한국어 효과, 영문 원문, 팬 번역 출처 링크를 확인했습니다.
+- 이미지 31종 및 자동 번역 1,214종의 출처/검수 범위는 [한국어 카드 문서](KOREAN_CARDS.md)를 참조하세요.
 
 - [GitHub Actions](https://github.com/AikiToWeb/LOTRKDB/actions/runs/36382646434): 실제 임시 PostgreSQL을 사용하는 통합 테스트 포함 전체 9개 테스트와 production build 통과.
 - 공개 사이트: 첫 화면 표시, 한국어 이름 ‘아라고른’ 검색 결과 8개, 로그인·가입 화면 표시 확인.
