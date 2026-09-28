@@ -1,4 +1,10 @@
 import { registerCardSearch } from "./webmcp";
+import {
+  CardBrowser,
+  CardRules,
+  cardName,
+  cardSearchText,
+} from "./CardBrowser";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BookOpen,
@@ -180,10 +186,10 @@ function Empty({
 }
 function CardImage({ card }: { card: Card }) {
   const [failed, setFailed] = useState(false);
-  return card.imagesrc && !failed ? (
+  return (card.image_ko || card.imagesrc) && !failed ? (
     <img
       loading="lazy"
-      src={new URL(card.imagesrc, "https://ringsdb.com").href}
+      src={card.image_ko || new URL(card.imagesrc!, "https://ringsdb.com").href}
       alt={`${card.name} 카드`}
       onError={() => setFailed(true)}
     />
@@ -252,6 +258,24 @@ export default function App() {
       const data = await r.json();
       if (!Array.isArray(data.cards) || !Array.isArray(data.scenarios))
         throw new Error();
+      const translations = await fetch("/data/ko.json");
+      if (!translations.ok) throw new Error();
+      const ko = await translations.json();
+      data.cards = data.cards.map((c: Card) => {
+        const t = ko.cards[c.code];
+        return t && t.sourceText === (c.text || "")
+          ? {
+              ...c,
+              name_ko: korean[c.name] || t.name,
+              traits_ko: t.traits,
+              text_ko: t.text,
+              translation_status: t.status,
+              image_ko: t.image,
+              image_ko_source: t.imageSource,
+              image_ko_credit: t.imageCredit,
+            }
+          : c;
+      });
       setCatalog(data);
     } catch {
       setLoadError(
@@ -447,7 +471,7 @@ export default function App() {
         <a className="brand" href="#home" onClick={() => go("home")}>
           <span className="ring-mark" />
           <span>
-            서부의 기록<small>THE LORD OF THE RINGS · LCG</small>
+            LOTRKDB<small>THE LORD OF THE RINGS · LCG</small>
           </span>
         </a>
         <div className="nav-label">원정대의 여정</div>
@@ -723,7 +747,7 @@ export default function App() {
                           </div>
                           <div className="hero-info">
                             <Sphere code={c.sphere_code} />
-                            <h3>{korean[c.name] ?? c.name}</h3>
+                            <h3>{cardName(c)}</h3>
                             <p>{c.name}</p>
                             <div className="hero-stats">
                               <span>
@@ -792,9 +816,9 @@ export default function App() {
                   <PageHeading
                     eyebrow="CARD LIBRARY"
                     title="카드 도서관"
-                    description={`RingsDB에서 가져온 ${cards.length.toLocaleString()}장의 카드. 카드 원문은 영어로 제공됩니다.`}
+                    description={`${cards.length.toLocaleString()}장의 카드 · 한국어 이름과 효과로 검색하고, 이미지와 효과를 함께 확인하세요.`}
                   />
-                  <CardLibrary
+                  <CardBrowser
                     catalog={catalog}
                     owned={state.owned}
                     onDetail={setDetail}
@@ -1286,11 +1310,7 @@ export default function App() {
         </div>
       )}
       {detail && (
-        <Modal
-          title={korean[detail.name] ?? detail.name}
-          onClose={() => setDetail(null)}
-          wide
-        >
+        <Modal title={cardName(detail)} onClose={() => setDetail(null)} wide>
           <div className="card-detail">
             <CardImage card={detail} />
             <div>
@@ -1302,7 +1322,7 @@ export default function App() {
                 {detail.is_unique && <span className="badge gold">고유</span>}
               </div>
               <h3>{detail.name}</h3>
-              <p>{detail.traits}</p>
+              <p>{detail.traits_ko || detail.traits}</p>
               <div className="card-values">
                 {[
                   ["비용", detail.cost],
@@ -1320,7 +1340,7 @@ export default function App() {
                     </span>
                   ))}
               </div>
-              <p className="rules-text">{plainText(detail.text)}</p>
+              <CardRules card={detail} />
               {detail.has_errata && (
                 <div className="notice">
                   정오표가 반영된 카드입니다. 원문에서 최신 내용을 확인하세요.
@@ -1497,157 +1517,6 @@ function Stat({
   );
 }
 
-function CardLibrary({
-  catalog,
-  owned,
-  onDetail,
-}: {
-  catalog: Catalog;
-  owned: string[];
-  onDetail: (c: Card) => void;
-}) {
-  const [query, setQuery] = useState(""),
-    [sphere, setSphere] = useState(""),
-    [type, setType] = useState(""),
-    [pack, setPack] = useState(""),
-    [onlyOwned, setOnlyOwned] = useState(false),
-    [page, setPage] = useState(1),
-    [sort, setSort] = useState("code");
-  const filtered = useMemo(
-    () =>
-      catalog.cards
-        .filter(
-          (c) =>
-            `${c.name} ${korean[c.name] ?? ""} ${c.traits ?? ""} ${plainText(c.text)} ${c.code}`
-              .toLowerCase()
-              .includes(query.toLowerCase()) &&
-            (!sphere || c.sphere_code === sphere) &&
-            (!type || c.type_code === type) &&
-            (!pack ||
-              c.pack_code === pack ||
-              c.packs?.some((p) => p.pack_code === pack)) &&
-            (!onlyOwned || ownedCard(c, owned)),
-        )
-        .sort((a, b) =>
-          sort === "name"
-            ? a.name.localeCompare(b.name)
-            : a.code.localeCompare(b.code),
-        ),
-    [catalog, query, sphere, type, pack, onlyOwned, owned, sort],
-  );
-  useEffect(() => setPage(1), [query, sphere, type, pack, onlyOwned, sort]);
-  const count = Math.max(1, Math.ceil(filtered.length / 24));
-  const actual = Math.min(page, count);
-  return (
-    <>
-      <div className="filter-panel">
-        <label className="search-field">
-          <Search size={19} />
-          <input
-            aria-label="카드 검색"
-            placeholder="카드 이름, 특성, 효과, 카드 번호 검색"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        <div className="filter-row">
-          <select
-            aria-label="영역 필터"
-            value={sphere}
-            onChange={(e) => setSphere(e.target.value)}
-          >
-            <option value="">모든 영역</option>
-            {Object.entries(spheres).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="카드 유형 필터"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="">모든 유형</option>
-            {Object.entries(types).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="확장팩 필터"
-            value={pack}
-            onChange={(e) => setPack(e.target.value)}
-          >
-            <option value="">모든 확장팩</option>
-            {catalog.packs.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="카드 정렬"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="code">카드 번호순</option>
-            <option value="name">이름순</option>
-          </select>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={onlyOwned}
-              onChange={(e) => setOnlyOwned(e.target.checked)}
-            />
-            보유 카드만
-          </label>
-        </div>
-      </div>
-      <div className="result-heading">
-        <span>
-          <strong>{filtered.length.toLocaleString()}</strong>장의 카드
-        </span>
-        {onlyOwned && owned.length === 0 && (
-          <span className="muted">보유 확장팩을 먼저 선택해 주세요.</span>
-        )}
-      </div>
-      {filtered.length ? (
-        <div className="card-grid">
-          {filtered.slice((actual - 1) * 24, actual * 24).map((c) => (
-            <button
-              className="library-card"
-              key={c.code}
-              onClick={() => onDetail(c)}
-            >
-              <div className="library-art">
-                <CardImage card={c} />
-                {c.has_errata && (
-                  <span className="badge gold errata">정오표</span>
-                )}
-              </div>
-              <div className="library-info">
-                <Sphere code={c.sphere_code} />
-                <h3>{korean[c.name] ?? c.name}</h3>
-                {korean[c.name] && <p>{c.name}</p>}
-                <small>
-                  {types[c.type_code] ?? c.type_name} · {c.code}
-                </small>
-              </div>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <Empty
-          title="검색 결과가 없습니다."
-          description="검색어와 필터를 변경해 보세요."
-        />
-      )}
-      <Pagination page={actual} pages={count} onPage={setPage} />
-    </>
-  );
-}
 function Pagination({
   page,
   pages,
@@ -1709,16 +1578,16 @@ function DeckEditor({
     [type, setType] = useState("hero"),
     [sphere, setSphere] = useState(""),
     [only, setOnly] = useState(false),
+    [builderPage, setBuilderPage] = useState(1),
     [error, setError] = useState("");
+  useEffect(() => setBuilderPage(1), [q, type, sphere, only]);
   const stats = deckStats(deck.slots, cards);
   const filtered = cards.filter(
     (c) =>
       playable(c) &&
       (!type || c.type_code === type) &&
       (!sphere || c.sphere_code === sphere) &&
-      `${c.name} ${korean[c.name] ?? ""} ${c.traits ?? ""}`
-        .toLowerCase()
-        .includes(q.toLowerCase()) &&
+      cardSearchText(c).includes(q.toLowerCase()) &&
       (!only || ownedCard(c, owned)),
   );
   function quantity(c: Card, delta: number) {
@@ -1790,7 +1659,7 @@ function DeckEditor({
               <Search size={17} />
               <input
                 aria-label="덱에 추가할 카드 검색"
-                placeholder="이름 또는 특성 검색"
+                placeholder="한국어 / 영어 이름, 특성, 효과 검색"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
@@ -1840,46 +1709,72 @@ function DeckEditor({
               </label>
             </div>
             <small className="muted">
-              {filtered.length}장 검색됨 · 처음 80장 표시
+              {filtered.length}장 검색됨 · 카드 이름을 눌러 한국어 효과 확인
             </small>
             <div className="builder-results">
-              {filtered.slice(0, 80).map((c) => (
-                <div className="card-row" key={c.code}>
-                  <button
-                    type="button"
-                    className="card-name"
-                    onClick={() => onDetail(c)}
-                  >
-                    <strong>{korean[c.name] ?? c.name}</strong>
-                    <small>
-                      {c.name} · {spheres[c.sphere_code]} ·{" "}
-                      {c.type_code === "hero"
-                        ? `위협 ${c.threat}`
-                        : `비용 ${c.cost ?? "—"}`}
-                    </small>
-                  </button>
-                  <span className="quantity">{deck.slots[c.code] ?? 0}</span>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    aria-label={`${c.name} 추가`}
-                    disabled={busy}
-                    onClick={() => quantity(c, 1)}
-                  >
-                    <Plus size={17} />
-                  </button>
-                </div>
-              ))}
+              {filtered
+                .slice((builderPage - 1) * 40, builderPage * 40)
+                .map((c) => (
+                  <div className="card-row" key={c.code}>
+                    <button
+                      type="button"
+                      className="card-name"
+                      onClick={() => onDetail(c)}
+                    >
+                      <strong>{cardName(c)}</strong>
+                      <small>
+                        {c.name} · {spheres[c.sphere_code]} ·{" "}
+                        {c.type_code === "hero"
+                          ? `위협 ${c.threat}`
+                          : `비용 ${c.cost ?? "—"}`}
+                      </small>
+                    </button>
+                    <span className="quantity">{deck.slots[c.code] ?? 0}</span>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label={`${c.name} 추가`}
+                      disabled={busy}
+                      onClick={() => quantity(c, 1)}
+                    >
+                      <Plus size={17} />
+                    </button>
+                  </div>
+                ))}
               {!filtered.length && (
                 <p className="muted">조건에 맞는 카드가 없습니다.</p>
               )}
             </div>
+            <Pagination
+              page={Math.min(
+                builderPage,
+                Math.max(1, Math.ceil(filtered.length / 40)),
+              )}
+              pages={Math.max(1, Math.ceil(filtered.length / 40))}
+              onPage={setBuilderPage}
+            />
           </section>
           <section className="deck-selection">
             <h3>선택한 카드</h3>
             {Object.entries(deck.slots).length ? (
               Object.entries(deck.slots)
-                .sort(([a], [b]) => a.localeCompare(b))
+                .sort(([a], [b]) => {
+                  const order = [
+                    "hero",
+                    "ally",
+                    "attachment",
+                    "event",
+                    "player-side-quest",
+                  ];
+                  return (
+                    order.indexOf(
+                      cards.find((c) => c.code === a)?.type_code || "",
+                    ) -
+                      order.indexOf(
+                        cards.find((c) => c.code === b)?.type_code || "",
+                      ) || a.localeCompare(b)
+                  );
+                })
                 .map(([code, n]) => {
                   const c = cards.find((c) => c.code === code);
                   return (
@@ -1889,7 +1784,7 @@ function DeckEditor({
                         className="card-name"
                         onClick={() => c && onDetail(c)}
                       >
-                        <strong>{c ? (korean[c.name] ?? c.name) : code}</strong>
+                        <strong>{c ? cardName(c) : code}</strong>
                         <small>
                           {c ? types[c.type_code] : "알 수 없는 카드"}
                         </small>

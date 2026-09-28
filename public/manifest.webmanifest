@@ -1,1 +1,17 @@
-{"name":"서부의 기록 · LOTRDB","short_name":"LOTRDB","lang":"ko","start_url":"/","display":"standalone","background_color":"#f5f6f2","theme_color":"#102a27","icons":[{"src":"/favicon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]}
+{
+  "name": "LOTRKDB · 반지의 제왕 카드게임",
+  "short_name": "LOTRKDB",
+  "lang": "ko",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f4f4",
+  "theme_color": "#510700",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -20,6 +20,13 @@ export type Card = {
   is_unique?: boolean;
   has_errata?: boolean;
   imagesrc?: string;
+  name_ko?: string;
+  traits_ko?: string;
+  text_ko?: string;
+  translation_status?: "machine" | "reviewed";
+  image_ko?: string;
+  image_ko_source?: string;
+  image_ko_credit?: string;
   packs?: { pack_code: string; pack_name: string; quantity: number }[];
 };
 export type Pack = {

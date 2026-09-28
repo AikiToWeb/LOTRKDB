@@ -24,7 +24,7 @@ export function registerCardSearch(cards: Card[]) {
     name: "search_lotr_cards",
     title: "반지의 제왕 LCG 카드 검색",
     description:
-      "현재 도서관에 있는 카드 원문을 이름 또는 특성으로 검색합니다. 데이터를 변경하지 않습니다.",
+      "현재 도서관의 한국어/영어 카드 이름, 특성, 한국어 효과를 검색합니다. 데이터를 변경하지 않습니다.",
     inputSchema: {
       type: "object",
       properties: { query: { type: "string", maxLength: 100 } },
@@ -43,19 +43,19 @@ export function registerCardSearch(cards: Card[]) {
         throw new Error("query must be a string up to 100 characters");
       const q = input.query.toLowerCase();
       const results = cards.filter((c) =>
-        `${c.name} ${c.traits ?? ""}`.toLowerCase().includes(q),
+        `${c.name} ${c.name_ko ?? ""} ${c.traits ?? ""} ${c.traits_ko ?? ""} ${c.text_ko ?? ""}`
+          .toLowerCase()
+          .includes(q),
       );
       return {
         count: results.length,
-        cards: results
-          .slice(0, 30)
-          .map((c) => ({
-            code: c.code,
-            name: c.name,
-            type: c.type_code,
-            sphere: c.sphere_code,
-            url: `https://ringsdb.com/card/${c.code}`,
-          })),
+        cards: results.slice(0, 30).map((c) => ({
+          code: c.code,
+          name: c.name,
+          type: c.type_code,
+          sphere: c.sphere_code,
+          url: `https://ringsdb.com/card/${c.code}`,
+        })),
       };
     },
   };
