@@ -2140,3 +2140,64 @@ footer a {
   justify-self: start;
   margin-left: 0;
 }
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.preset-choice {
+  text-align: left;
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid #d9ddd3;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  cursor: pointer;
+}
+.preset-choice span,
+.preset-choice small {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.preset-choice.selected {
+  border-color: #337eae;
+  box-shadow: inset 0 0 0 1px #337eae;
+  background: #eef6fb;
+}
+.preset-choice:focus-visible {
+  outline: 3px solid #337eae;
+  outline-offset: 2px;
+}
+.preset-preview {
+  margin: 18px 0;
+  padding: 16px;
+  background: #f5f6f1;
+  border-radius: 6px;
+}
+.preset-preview details {
+  margin: 16px 0;
+}
+.preset-preview summary {
+  cursor: pointer;
+}
+.preset-preview li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.preset-preview ul {
+  list-style: none;
+  padding: 0;
+}
+@media (max-width: 600px) {
+  .preset-grid {
+    grid-template-columns: 1fr;
+  }
+  .preset-choice {
+    padding: 12px;
+  }
+}

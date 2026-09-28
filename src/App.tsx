@@ -1,5 +1,6 @@
 import { registerCardSearch } from "./webmcp";
 import { Rooms } from "./Rooms";
+import { DeckPresets } from "./DeckPresets";
 import { renderCloud } from "./render-client";
 import {
   CardBrowser,
@@ -231,6 +232,7 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [detail, setDetail] = useState<Card | null>(null);
   const [editor, setEditor] = useState<Deck | null>(null);
+  const [choosingDeck, setChoosingDeck] = useState(false);
   const [play, setPlay] = useState<Play | null>(null);
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [auth, setAuth] = useState(false);
@@ -450,6 +452,10 @@ export default function App() {
     }
   }
   function newDeck() {
+    setChoosingDeck(true);
+  }
+  function blankDeck() {
+    setChoosingDeck(false);
     setEditor({
       id: uid(),
       name: "새로운 원정대",
@@ -1418,6 +1424,29 @@ export default function App() {
               </a>
             </div>
           </div>
+        </Modal>
+      )}
+      {choosingDeck && catalog && (
+        <Modal
+          title="새 덱 만들기 · 코어 프리셋"
+          onClose={() => setChoosingDeck(false)}
+          wide
+        >
+          <DeckPresets
+            cards={cards}
+            busy={busy || !ready}
+            onBlank={blankDeck}
+            onRegister={async (d) => {
+              await commit({ ...state, decks: [d, ...state.decks] });
+              setChoosingDeck(false);
+              go("decks");
+              notify(
+                user
+                  ? "프리셋 덱을 계정에 등록했습니다."
+                  : "프리셋 덱을 이 기기에 등록했습니다.",
+              );
+            }}
+          />
         </Modal>
       )}
       {editor && catalog && (
