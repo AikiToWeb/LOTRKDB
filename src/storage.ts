@@ -12,15 +12,6 @@ export function readLocal(user?: string): State {
   const raw = localStorage.getItem(storageKey(user));
   return raw ? validateState(JSON.parse(raw)) : emptyState();
 }
-export function writeLocal(state: State, user?: string) {
-  localStorage.setItem(storageKey(user), JSON.stringify(state));
-}
-export function writePending(next: State, previous: State, user: string) {
-  localStorage.setItem(
-    `lotrdb.pending.${user}`,
-    JSON.stringify({ next, previous }),
-  );
-}
 export function clearPending(user: string) {
   localStorage.removeItem(`lotrdb.pending.${user}`);
 }

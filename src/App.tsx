@@ -59,9 +59,7 @@ import {
   readCloud,
   readLocal,
   saveCloud,
-  writeLocal,
   readPending,
-  writePending,
   clearPending,
 } from "./storage";
 
@@ -223,9 +221,8 @@ export default function App() {
     username?: string;
     name?: string;
   } | null>(null);
-  const [status, setStatus] = useState("이 기기에 저장");
+  const [status, setStatus] = useState("로그인 확인 중");
   const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState(false);
   const [ready, setReady] = useState(false);
   const [recovery, setRecovery] = useState(false);
   const [toast, setToast] = useState("");
@@ -320,21 +317,13 @@ export default function App() {
       const token = ++active.current;
       setReady(false);
       setUser(next);
-      setPending(false);
       setEditor(null);
+      setChoosingDeck(false);
       setPlay(null);
       setCampaign(null);
-      let local = emptyState() as State;
-      try {
-        local = readLocal(next?.id);
-      } catch {
-        notify(
-          "기기 저장 데이터를 읽지 못했습니다. 백업 파일을 복원할 수 있습니다.",
-        );
-      }
       if (!live) return;
-      setState(local);
-      baseline.current = local;
+      setState(emptyState());
+      baseline.current = emptyState();
       if (next) {
         setStatus("계정 기록 불러오는 중");
         try {
@@ -347,8 +336,7 @@ export default function App() {
           if (!live || token !== active.current) return;
           setState(remote);
           baseline.current = remote;
-          writeLocal(remote, next.id);
-          setStatus("계정 저장 완료");
+          setStatus("저장하였습니다");
           setReady(true);
         } catch {
           if (!live || token !== active.current) return;
@@ -358,7 +346,7 @@ export default function App() {
           );
         }
       } else {
-        setStatus("이 기기에 저장");
+        setStatus("로그인이 필요합니다");
         setReady(true);
       }
     }
@@ -386,6 +374,10 @@ export default function App() {
     };
   }, []);
   const commit: Commit = async (next) => {
+    if (!user) {
+      setAuth(true);
+      throw new Error("로그인 후 저장할 수 있습니다.");
+    }
     if (lock.current || !ready) {
       notify("저장소 연결을 기다려 주세요.");
       throw new Error("busy");
@@ -394,31 +386,20 @@ export default function App() {
     setBusy(true);
     const token = active.current;
     try {
-      writeLocal(next, user?.id);
+      setStatus("저장 중");
+      await saveCloud(next, baseline.current, user.id);
+      if (token !== active.current)
+        throw new Error("계정이 변경되었습니다. 다시 로그인해 주세요.");
+      baseline.current = next;
       setState(next);
-      if (user) {
-        writePending(next, baseline.current, user.id);
-        setStatus("계정 저장 중");
-        try {
-          await saveCloud(next, baseline.current, user.id);
-          if (token !== active.current) return;
-          baseline.current = next;
-          clearPending(user.id);
-          setPending(false);
-          setStatus("계정 저장 완료");
-        } catch (e) {
-          if (token !== active.current) return;
-          setPending(true);
-          setStatus("기기에 저장 · 동기화 필요");
-          notify(
-            `계정 동기화에 실패했습니다. 기기 기록은 보관됩니다. 설정에서 재시도하세요. ${(e as Error).message}`,
-          );
-        }
-      } else setStatus("이 기기에 저장");
+      setStatus("저장하였습니다");
     } catch (e) {
-      notify(
-        "기기 저장 공간이 부족하거나 저장이 차단되었습니다. 백업을 내려받아 주세요.",
-      );
+      if (token === active.current) {
+        setStatus("저장 실패");
+        notify(
+          `저장하지 못했습니다. 연결을 확인하고 다시 저장해 주세요. ${(e as Error).message}`,
+        );
+      }
       throw e;
     } finally {
       lock.current = false;
@@ -426,10 +407,6 @@ export default function App() {
     }
   };
   async function refresh() {
-    if (pending) {
-      notify("먼저 미동기화 기록을 계정에 저장해 주세요.");
-      return;
-    }
     if (!user) return;
     setBusy(true);
     try {
@@ -439,11 +416,10 @@ export default function App() {
         clearPending(user.id);
       }
       const next = await readCloud(user.id);
-      writeLocal(next, user.id);
       setState(next);
       baseline.current = next;
       setReady(true);
-      setStatus("계정 저장 완료");
+      setStatus("저장하였습니다");
       notify("최신 계정 기록을 불러왔습니다.");
     } catch (e) {
       notify((e as Error).message);
@@ -452,6 +428,10 @@ export default function App() {
     }
   }
   function newDeck() {
+    if (!user) {
+      setAuth(true);
+      return;
+    }
     setChoosingDeck(true);
   }
   function blankDeck() {
@@ -465,6 +445,10 @@ export default function App() {
     });
   }
   function newPlay(scenarioId = catalog?.scenarios[0]?.id ?? "") {
+    if (!user) {
+      setAuth(true);
+      return;
+    }
     setPlay({
       id: uid(),
       scenarioId,
@@ -868,7 +852,7 @@ export default function App() {
                   />
                   <RingsImport
                     cards={cards}
-                    onImport={(d) => setEditor(d)}
+                    onImport={(d) => (user ? setEditor(d) : setAuth(true))}
                     disabled={!ready || busy}
                     notify={notify}
                   />
@@ -977,7 +961,7 @@ export default function App() {
                     userId={user?.id}
                     playerName={user?.name}
                     enabled={useRender}
-                    saved={ready && !busy && !pending}
+                    saved={ready && !busy && status !== "저장 실패"}
                     onLogin={() => setAuth(true)}
                     onCard={setDetail}
                   />
@@ -1002,14 +986,16 @@ export default function App() {
                       className="btn"
                       disabled={!ready || busy}
                       onClick={() =>
-                        setCampaign({
-                          id: uid(),
-                          name: "새 캠페인",
-                          notes: "",
-                          scenarioIds: [],
-                          boons: "",
-                          burdens: "",
-                        })
+                        user
+                          ? setCampaign({
+                              id: uid(),
+                              name: "새 캠페인",
+                              notes: "",
+                              scenarioIds: [],
+                              boons: "",
+                              burdens: "",
+                            })
+                          : setAuth(true)
                       }
                     >
                       <Plus size={17} />
@@ -1147,12 +1133,12 @@ export default function App() {
                           ? user.name
                             ? `${user.name} · ${user.username}`
                             : user.email
-                          : "현재 게스트로 사용 중입니다."}
+                          : "로그인 후 이용해 주세요."}
                       </p>
                       <div className="notice">
                         {user
                           ? status
-                          : "덱과 기록은 이 브라우저에 저장됩니다. 다른 기기에서 같은 기록을 보려면 계정 로그인이 필요합니다."}
+                          : "덱과 기록은 로그인한 계정으로 저장됩니다. 회원가입하거나 로그인해 주세요."}
                       </div>
                       {!cloud && (
                         <p className="muted">
@@ -1166,26 +1152,15 @@ export default function App() {
                           <>
                             <button
                               className="btn"
-                              disabled={busy || pending}
+                              disabled={busy}
                               onClick={() => void refresh()}
                             >
                               <RefreshCw size={16} />
                               계정 기록 새로고침
                             </button>
-                            {pending && (
-                              <button
-                                className="btn primary"
-                                disabled={busy}
-                                onClick={() =>
-                                  void commit(state).catch(() => {})
-                                }
-                              >
-                                동기화 재시도
-                              </button>
-                            )}
                             <button
                               className="btn"
-                              disabled={busy || pending}
+                              disabled={busy}
                               onClick={() =>
                                 void cloud?.auth
                                   .signOut()
@@ -1235,15 +1210,13 @@ export default function App() {
                                   ...new Set([...state.owned, ...guest.owned]),
                                 ],
                               });
-                              notify(
-                                "이 기기의 게스트 기록을 계정에 추가했습니다.",
-                              );
+                              notify("이전 기록을 저장하였습니다.");
                             } catch (e) {
                               notify((e as Error).message);
                             }
                           }}
                         >
-                          이 기기의 게스트 기록 가져오기
+                          이전 기록 가져오기
                         </button>
                       )}
                     </section>
@@ -1440,11 +1413,7 @@ export default function App() {
               await commit({ ...state, decks: [d, ...state.decks] });
               setChoosingDeck(false);
               go("decks");
-              notify(
-                user
-                  ? "프리셋 덱을 계정에 등록했습니다."
-                  : "프리셋 덱을 이 기기에 등록했습니다.",
-              );
+              notify("프리셋 덱을 저장하였습니다.");
             }}
           />
         </Modal>
@@ -1462,11 +1431,7 @@ export default function App() {
               decks: [d, ...state.decks.filter((x) => x.id !== d.id)],
             });
             setEditor(null);
-            notify(
-              user
-                ? "덱을 저장했습니다. 동기화 상태를 확인해 주세요."
-                : "덱을 이 기기에 저장했습니다.",
-            );
+            notify("덱을 저장하였습니다.");
           }}
           onDetail={setDetail}
         />
@@ -1485,7 +1450,7 @@ export default function App() {
               plays: [p, ...state.plays.filter((x) => x.id !== p.id)],
             });
             setPlay(null);
-            notify("플레이 기록을 저장했습니다.");
+            notify("플레이 기록을 저장하였습니다.");
           }}
         />
       )}
@@ -1501,7 +1466,7 @@ export default function App() {
               campaigns: [c, ...state.campaigns.filter((x) => x.id !== c.id)],
             });
             setCampaign(null);
-            notify("캠페인을 저장했습니다.");
+            notify("캠페인을 저장하였습니다.");
           }}
         />
       )}
@@ -2871,11 +2836,10 @@ function Auth({
           </div>
           <p>
             배포 관리자가 계정 DB를 연결하면 모바일과 PC에서 같은 덱과 기록을
-            사용할 수 있습니다. 지금은 게스트 모드로 이 기기에 저장할 수
-            있습니다.
+            사용할 수 있습니다. 저장소 연결 후 로그인하여 이용해 주세요.
           </p>
           <button className="btn primary" onClick={onClose}>
-            게스트로 계속하기
+            닫기
           </button>
         </>
       ) : (
