@@ -1,14 +1,31 @@
 # Render 무료 서비스 접속 유지
 
-GitHub Actions의 `Check Render availability` 작업이 약 5분마다 공개 `/api/health`에 요청하고 HTTP 200 및 PostgreSQL 연결 상태를 검사합니다. 홈페이지 전체와 카드 이미지를 다운로드하지 않아 요청량을 줄입니다. 계정이나 비밀 키가 필요하지 않으며 사용자 덱과 기록을 변경하지 않습니다. 요청은 외부 GitHub 실행기에서 발생하므로 Render 서버나 사용자의 PC가 켜져 있어야 하는 자체 타이머에 의존하지 않습니다.
+## 기본 방식: 외부 HTTP 스케줄러
 
-- 설정: `.github/workflows/render-availability.yml`
-- 실행 내역 및 수동 실행: https://github.com/AikiToWeb/LOTRKDB/actions/workflows/render-availability.yml
-- 중지: 해당 Actions 페이지의 메뉴에서 Disable workflow 선택
-- 초기 실행: 이 워크플로 파일을 main에 push할 때 즉시 검사
+브라우저가 닫히고 사용자의 PC가 꺼져 있어도 요청을 보내는 외부 서비스를 사용한다. cron-job.org에서 다음 HTTP 작업을 등록한다.
 
-Render 무료 웹 서비스는 요청이 15분 동안 없으면 절전됩니다. 정기 상태 확인 요청은 유휴 절전을 줄이지만 항상 즉시 접속을 보장하지 않습니다. GitHub 예약 실행은 지연되거나 누락될 수 있고, 공개 저장소에 60일 동안 활동이 없으면 예약 작업이 자동 비활성화됩니다. 비활성화 시 Actions 화면에서 다시 활성화해야 합니다. 무료 플랜의 재시작, 배포, 월별 할당량 소진도 이 작업으로 방지하지 못합니다.
+- 제목: LOTRKDB 서버 접속 유지
+- URL: https://lotrkdb.onrender.com/api/health
+- 요청: GET, 인증·쿠키·요청 본문 없음
+- 일정: 매일 5분마다 (시간대에 관계없이 하루 종일)
+- 상태: 활성화
+- 응답 저장: 짧은 JSON 상태를 실행 기록에서 확인
+- 예상 응답: HTTP 200, `status: ok`, `database: connected`
 
-Render 무료 실행 시간은 워크스페이스 전체 월 750시간입니다. 서비스 하나를 계속 실행하면 월 720~744시간을 사용하므로 다른 무료 웹 서비스와 시간을 공유할 경우 한도를 확인해야 합니다. 무료 PostgreSQL의 생성 후 30일 만료는 접속 유지로 연장되지 않습니다. 상시 접속 보장이 필요하면 절전 없는 유료 인스턴스 또는 다른 호스팅 구성이 필요합니다.
+이 엔드포인트는 이미 Cache-Control: no-store를 적용한다. 사용자 계정, 덱, 플레이 기록을 조회하거나 변경하지 않는다. 최초 등록 전 서버를 깨우고 수동 시험 실행에 성공한 뒤, 예약 실행 기록에서 연속 실행 간격을 확인한다. 최초 콜드 스타트는 외부 스케줄러의 요청 제한 시간을 초과할 수 있지만 서버를 깨우는 요청은 전달된다.
 
-근거: [Render 무료 플랜](https://render.com/docs/free), [GitHub 예약 실행 조건](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+외부 작업을 설정하려면 cron-job.org 계정이 필요하다. 신규 비밀번호와 계정 인증·약관 동의는 사용자가 직접 진행한다. 운영 중단은 cron-job.org의 해당 작업 비활성화로 처리한다.
+
+## 기존 GitHub 작업: 보조 확인용
+
+`.github/workflows/render-availability.yml`의 `Check Render availability`는 5분 간격으로 예약되어 있지만 실제 실행 간격을 보장하지 않는다. 2026-09-29 조사에서 최근 예약 실행 시각은 UTC 2026-09-28 15:39, 21:23, 2026-09-29 01:10으로, 수 시간의 공백이 확인됐다. 따라서 이 작업만으로 15분 유휴 절전을 방지할 수 없다.
+
+- 실행 내역: https://github.com/AikiToWeb/LOTRKDB/actions/workflows/render-availability.yml
+- 중지: 해당 Actions 페이지의 Disable workflow
+- 수동 실행과 배포 상태 확인 용도로 사용한다.
+
+## 무료 플랜의 범위
+
+Render 무료 웹 서비스는 외부 요청이 15분 동안 없으면 절전되며 다음 요청 때 로딩 화면을 표시한다. 5분 주기 외부 요청은 이 유휴 절전을 줄이는 용도다. 무료 서비스의 임의 재시작, 배포, 외부 스케줄러 장애 및 월별 한도는 요청만으로 제거되지 않으므로 항상 즉시 응답을 보장한다고 안내하지 않는다.
+
+근거: [Render 무료 플랜](https://render.com/docs/free), [GitHub 예약 실행](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [cron-job.org FAQ](https://cron-job.org/en/faq/).
