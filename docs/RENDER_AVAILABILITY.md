@@ -2,7 +2,9 @@
 
 ## 기본 방식: 외부 HTTP 스케줄러
 
-브라우저가 닫히고 사용자의 PC가 꺼져 있어도 요청을 보내는 외부 서비스를 사용한다. cron-job.org에서 다음 HTTP 작업을 등록한다.
+브라우저가 닫히고 사용자의 PC가 꺼져 있어도 요청을 보내는 외부 서비스를 사용한다. 2026-09-29 cron-job.org 작업 8534467을 등록하고 활성화했다. 즉시 실행에서 HTTP 200 OK, 296ms 및 PostgreSQL connected 응답을 확인했다. 작업 관리: https://console.cron-job.org/jobs/8534467 (본인 계정 로그인 필요).
+
+등록된 HTTP 작업 설정:
 
 - 제목: LOTRKDB 서버 접속 유지
 - URL: https://lotrkdb.onrender.com/api/health
