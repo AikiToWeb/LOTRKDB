@@ -33,3 +33,9 @@
 Render 무료 웹 서비스는 외부 요청이 15분 동안 없으면 절전되며 다음 요청 때 로딩 화면을 표시한다. 5분 주기 외부 요청은 이 유휴 절전을 줄이는 용도다. 무료 서비스의 임의 재시작, 배포, 외부 스케줄러 장애 및 월별 한도는 요청만으로 제거되지 않으므로 항상 즉시 응답을 보장한다고 안내하지 않는다.
 
 근거: [Render 무료 플랜](https://render.com/docs/free), [GitHub 예약 실행](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule), [cron-job.org FAQ](https://cron-job.org/en/faq/).
+
+## 2026-10-15 재점검 상태
+
+로그인 후 기존 작업 8534467이 **비활성화**된 것을 확인했습니다. URL과 매 5분 일정(Asia/Seoul), 응답 저장 옵션은 유지되어 있습니다. 목록의 마지막 실행은 2026-10-01 `Failed (HTTP error)` / 1.08초이며 상세 History는 `No history items found`입니다. 따라서 마지막 HTTP 코드와 비활성화 원인은 현재 보존 기록에서 확인할 수 없습니다. 위의 활성화·실행 성공은 2026-09-29 당시 기록입니다.
+
+중복 작업은 만들지 않았습니다. 기존 작업의 재활성화는 명시적 승인 대기입니다. 재활성화 후에는 test run과 실제 예약 실행 2회 이상의 HTTP 상태·응답·간격을 확인해야 합니다. 공개 API 연결 성공만으로 cron 복구 완료로 처리하지 않습니다.

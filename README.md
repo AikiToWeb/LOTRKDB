@@ -10,10 +10,10 @@ Fantasy Flight Games의 **The Lord of the Rings: The Card Game (LCG)**만 다루
 - 플레이 기록: 덱·캠페인 연결, 1~4인, 쉬움/일반/악몽, 진행 중/승리/패배, 날짜·라운드·위협·피해·승점·메모, 점수 계산.
 - 캠페인: 시나리오 선택, 해당 캠페인의 승리 집계, 은혜·부담·메모.
 - 보유 제품: 개정판 등 재수록 제품을 포함한 소유 카드 필터.
-- 저장: 게스트 기기 저장, Render 서버의 자체 회원가입(이름·아이디·비밀번호) 및 아이디 로그인, 계정별 PostgreSQL 저장, JSON 백업/복원. SNS 연동이나 이메일 입력은 필요하지 않습니다. 기존 Supabase 연결도 선택적으로 지원합니다.
+- 저장: Render 서버의 자체 회원가입(이름·아이디·비밀번호) 및 아이디 로그인, 계정별 PostgreSQL 저장, 개인 기록 JSON 백업/복원(계정·공동 방 제외). SNS 연동이나 이메일 입력은 필요하지 않습니다. 기존 Supabase 연결도 선택적으로 지원합니다.
 - 반응형 PC/모바일 화면, 키보드 접근 가능한 모달, 홈 화면 추가용 웹 앱 manifest.
 
-초기 스냅샷: 카드 **1,315장**, 제품 **113개**, 시나리오 **143개** (2026-09-28). RingsDB에 공개된 커뮤니티 콘텐츠도 포함되어 있으므로 제품 필터로 범위를 좁힐 수 있습니다. 전체 카드 효과의 한국어 번역을 제공하며 **101종 검수 / 1,214종 자동 번역**을 구분합니다. 공개 팬 번역 자료에서 확인한 **31종 한글 카드 이미지**를 적용했습니다. 공식 한국어판으로 표기하지 않습니다. [번역 및 이미지 출처](docs/KOREAN_CARDS.md)를 확인하세요.
+초기 스냅샷: 카드 **1,315장**, 제품 **114개**, 시나리오 **143개** (2026-09-28). RingsDB에 공개된 커뮤니티 콘텐츠도 포함되어 있으므로 제품 필터로 범위를 좁힐 수 있습니다. 전체 카드 효과의 한국어 번역을 제공하며 **101종 검수 / 1,214종 자동 번역**을 구분합니다. 공개 팬 번역 자료에서 확인한 **31종 한글 카드 이미지**를 적용했습니다. 공식 한국어판으로 표기하지 않습니다. [번역 및 이미지 출처](docs/KOREAN_CARDS.md)를 확인하세요.
 
 ## 로컬 실행
 
@@ -38,13 +38,12 @@ npm run preview
 
 2026-09-28 실제 Render 배포와 PostgreSQL 저장 테스트를 완료했습니다. [배포 테스트 결과](docs/DEPLOYMENT_TEST.md)를 확인하세요. 사이트에서 회원가입 후 로그인하면 모바일/PC에서 같은 계정의 기록을 불러올 수 있습니다.
 
-사용자가 요청한 Render DB 테스트 구성입니다. `render.yaml`로 싱가포르의 무료 웹 서비스 `lotrkdb`와 무료 PostgreSQL `lotrkdb-postgres`를 함께 생성합니다.
+사용자가 요청한 Render DB 테스트 구성입니다. 기존 싱가포르 웹 서비스 `lotrkdb`와 PostgreSQL `lotrkdb-postgres`를 유지합니다. `render.yaml`은 해당 구성의 기준이며 중복 서비스를 만들지 않습니다.
 
-1. Render Dashboard → New → Blueprint에서 `https://github.com/AikiToWeb/LOTRKDB`를 연결합니다.
-2. 이름을 `lotrkdb`로 지정하고 `main`의 `render.yaml`을 적용합니다. 웹/DB 모두 `free` 플랜인지 확인합니다.
-3. Render가 DB의 내부 접속 URL을 서버의 `DATABASE_URL`에 주입합니다. 브라우저에 DB 비밀번호를 전달하지 않습니다. DB 외부 접속은 차단합니다.
-4. 서버가 시작할 때 `server/schema.sql`을 적용하고 RingsDB 스냅샷을 `lotr_catalog`에 저장합니다.
-5. `/api/health`가 `{ "status": "ok", "database": "connected" }`를 반환하면 실제 사이트에서 가입, 로그인, 덱/플레이 저장과 재접속을 확인합니다.
+1. [기존 웹 서비스](https://dashboard.render.com/web/srv-dasvq9g473hc73e52a10)에서 저장소·main·자동 배포 연결 상태와 배포 커밋을 확인합니다.
+2. [기존 DB](https://dashboard.render.com/d/dpg-dasvq08473hc73e518ig-a)에서 만료 시각과 보존 상태를 확인합니다. DB URL은 서버 환경에서만 사용합니다.
+3. 코드 변경은 기존 서비스에 배포하고 `/api/health` 및 배포 검증을 실행합니다.
+4. 무료 DB 만료 대응은 [전체 DB 백업·이전 절차](docs/DATABASE_BACKUP.md)를 따릅니다. 앱 JSON만으로 공동 방이나 계정을 복구할 수 없습니다.
 
 빌드 명령: `npm ci --include=dev && npm run build`. 시작 명령: `npm start`.
 
@@ -57,7 +56,7 @@ npm run preview
 
 ### 무료 테스트 조건
 
-- Render 무료 PostgreSQL은 생성 후 **30일에 만료**됩니다. 만료 전에 앱의 전체 JSON 백업을 내려받으세요.
+- Render 무료 PostgreSQL은 생성 후 **30일에 만료**됩니다. 만료 전에 전체 PostgreSQL 백업을 확보하고 복원 검증을 완료하세요. 앱 JSON은 개인 기록만 포함합니다.
 - 무료 웹 서비스는 15분 동안 사용하지 않으면 대기 상태가 되고 재접속 때 시작 시간이 걸릴 수 있습니다.
 - Render 자체 가입은 이름·아이디·비밀번호만 받으며 이메일·전화번호·SNS를 수집하거나 연결하지 않습니다. 아이디는 영문·숫자·밑줄 3~24자, 비밀번호는 8~128자입니다. 기존 이메일 계정은 아이디 칸에 기존 이메일을 입력하면 같은 계정으로 로그인합니다. 이메일을 통한 비밀번호 재설정은 제공하지 않습니다.
 - 비밀번호는 무작위 salt를 붙여 scrypt로 해시합니다. 세션은 PostgreSQL에 토큰 해시로 저장하고, 브라우저에는 HttpOnly·SameSite=Lax·Secure 쿠키만 저장합니다.
@@ -87,65 +86,18 @@ npm run test:deployment -- https://lotrkdb.onrender.com
 
 실제 배포를 대상으로 임시 테스트 계정 두 개를 만들고 저장/조회/재로그인/계정 격리를 검증합니다. 완료 후 임시 덱·플레이·캠페인·보유 기록과 세션을 정리합니다. 빈 테스트 계정 두 개는 DB에 남으며 실제 이메일을 발송하지 않습니다. 앱 이용자의 기존 기록을 수정하지 않습니다.
 
-## 대체 배포: Render Static Site + Supabase
+## 다른 PostgreSQL로 이전할 때
 
-정적 앱을 Render에 배포하고 계정 인증·장기 저장은 Supabase에 연결합니다. Render의 무료 서버 파일시스템에 SQLite를 저장하지 않습니다. Render 무료 Postgres의 30일 만료도 피합니다. 무료 요금제의 사용량·휴면 정책은 각 공급자의 현재 조건을 따릅니다.
-
-### 1. Supabase 설정
-
-1. [Supabase](https://supabase.com/dashboard)에서 Free 프로젝트를 준비합니다.
-2. SQL Editor에서 [`supabase/schema.sql`](supabase/schema.sql)을 **한 번** 실행합니다. 사용자 소유의 덱, 기록, 캠페인, 컬렉션만 접근할 수 있도록 RLS가 적용됩니다.
-3. Authentication → Providers에서 Email을 활성화합니다. 이메일 확인 사용을 권장합니다.
-4. Project Settings → API에서 Project URL과 **publishable 또는 anon 공개 키**를 확인합니다. `service_role` 또는 secret 키는 앱에 넣으면 안 됩니다.
-5. `.env.example`을 `.env.local`로 복사해 두 값을 입력하면 로컬에서 계정 기능을 사용할 수 있습니다.
-
-```dotenv
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_KEY
-```
-
-### 2. Render 배포
-
-저장소: [AikiToWeb/LOTRKDB](https://github.com/AikiToWeb/LOTRKDB)
-
-이 대체 구성은 **New → Static Site**에서 수동으로 설정합니다. 현재 `render.yaml`은 위의 Render PostgreSQL 구성에 사용합니다. `VITE_STORAGE_PROVIDER`를 생략하고 두 Supabase 환경변수를 입력합니다.
-
-| 항목                  | 값                                            |
-| --------------------- | --------------------------------------------- |
-| Branch                | `main`                                        |
-| Build Command         | `npm ci && npm run build`                     |
-| Publish Directory     | `dist`                                        |
-| Environment Variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
-
-SPA Rewrite: `/*` → `/index.html`. `render.yaml`에는 이미 포함되어 있습니다. 비어 있는 환경변수로도 게스트 모드는 배포할 수 있지만, **다른 기기 간 저장은 Supabase 연결 후 가능합니다.** Vite 환경변수는 빌드 때 포함되므로 연결 정보를 변경하면 재배포합니다.
-
-### 3. 로그인 Redirect URL
-
-배포 후 Supabase Authentication → URL Configuration에 다음을 설정합니다.
-
-- Site URL: Render의 실제 `https://…onrender.com` 주소.
-- Redirect URLs: 실제 배포 주소와 `http://127.0.0.1:5173/**` (로컬 개발용).
-- 회원가입 확인과 비밀번호 재설정 링크가 실제 사이트로 돌아오는지 확인합니다.
-- 기본 이메일 발송 제한을 넘어서는 사용량이라면 Supabase의 이메일 공급자 설정을 추가합니다.
-
-### 4. 공개 배포 후 확인
-
-1. PC에서 가입/이메일 확인/로그인 후 덱과 플레이를 저장합니다.
-2. 모바일에서 같은 계정으로 로그인하여 기록이 보이는지 확인합니다.
-3. 다른 계정에서는 첫 계정의 기록이 보이지 않는지 확인합니다.
-4. 같은 계정의 여러 기기를 동시에 쓰는 경우 설정의 **계정 기록 새로고침**으로 최신 기록을 불러옵니다.
-5. 백업 다운로드와 복원, 로그인 해제 시 게스트/계정 기록 분리를 확인합니다.
+현재 운영은 Render 자체 인증과 PostgreSQL을 사용합니다. 저장소에 남은 Supabase 어댑터는 별도 대체 구성이며 현재 계정·공동 방을 자동으로 옮기지 않습니다. DB 만료 대응을 위해 새 Static Site나 중복 웹 서비스를 만들지 마세요. 기존 웹 서비스와 자체 인증을 유지하는 PostgreSQL 백업·복원 방법은 [전체 DB 백업·이전 절차](docs/DATABASE_BACKUP.md)를 확인하세요.
 
 ## 저장과 동기화 정책
 
-- 게스트 기록은 현재 브라우저에만 저장합니다. 브라우저 데이터를 삭제하면 없어질 수 있으므로 JSON 백업을 사용하세요.
-- 계정 연결 전에는 화면에 기기 저장 상태를 표시하며, 연결되지 않은 계정 기능은 안내로 대체합니다.
-- 계정에 로그인하면 계정 기록을 불러옵니다. 게스트 기록은 자동으로 업로드하지 않습니다. 설정의 **이 기기의 게스트 기록 가져오기**로 명시적으로 추가합니다.
-- 서버 저장 실패 시 미완료 변경을 로컬 큐에 남깁니다. 설정에서 재시도하거나 재접속하면 큐를 먼저 재시도합니다. 실패한 기록을 서버의 오래된 기록으로 덮어쓰지 않습니다.
-- 서버 읽기 실패 시 변경을 막고 캐시를 유지합니다. 연결 복구 후 계정 기록 새로고침으로 다시 사용합니다.
-- 변경/삭제된 개별 기록만 서버에 반영합니다. 다른 기기의 관계없는 기록은 지우지 않습니다. 같은 기록을 동시에 수정하면 마지막 저장이 적용됩니다. 실시간 공동 편집은 제공하지 않습니다.
-- 백업 복원은 기존 기록과 병합합니다. ID가 같은 기록은 현재 기록을 유지합니다. 로그인 상태에서는 현재 계정에 저장됩니다.
-- 게스트 모드는 오프라인에서도 이미 열린 화면에서 편집할 수 있습니다. 오프라인 앱 전체 재시작/서비스워커 캐시는 제공하지 않습니다.
+- 비로그인 사용자는 카드 조회만 이용합니다. 덱·기록·캠페인·공동 방은 로그인 후 사용합니다.
+- 사용자 기록은 PostgreSQL에 저장합니다. DB 쓰기 성공 후에만 화면을 갱신하고 저장 완료를 표시하며, 실패하면 편집 입력과 이전 저장 상태를 유지합니다.
+- 예전 로컬 기록·미동기화 큐는 이관 목적으로만 읽습니다. 새 사용자 기록이나 실패한 변경을 localStorage에 저장하지 않습니다.
+- 개별 기록의 변경만 반영하므로 다른 기기의 관계없는 기록을 지우지 않습니다. 같은 기록을 동시에 수정하면 마지막 저장이 적용됩니다.
+- 개인 JSON 복원은 현재 계정 기록과 병합하며 같은 ID는 현재 기록을 유지합니다. 공동 방과 계정은 복원하지 않습니다.
+- 운영 백업에는 계정 UUID·비밀번호 해시와 공동 방 관계까지 포함해야 합니다. [백업 범위와 이전 절차](docs/DATABASE_BACKUP.md)를 확인하세요.
 
 ## 데이터 갱신
 
@@ -168,7 +120,7 @@ RingsDB의 공개 `cards/`, `packs/` API와 공개 저장소의 시나리오 목
 - TypeScript 검사와 production build.
 - 도메인 테스트: 일반 덱 구성, 영웅 중복, 수량 제한, 백업 검증, 점수 공식, upstream SQL 파싱.
 - 브라우저 검증: 카드 검색, 영웅 제한, 덱 저장 후 새로고침 유지, 시나리오 화면 및 모바일 배치.
-- 실제 Supabase 가입/로그인, 계정간 RLS와 기기간 저장은 프로젝트 연결 후 위의 배포 후 확인 절차를 수행해야 합니다.
+- Render 운영 검증은 `npm run test:deployment -- https://lotrkdb.onrender.com`과 `node scripts/smoke-rooms.mjs https://lotrkdb.onrender.com`으로 실행합니다. 실제 브라우저의 로그인·저장·방 참여도 별도로 확인합니다.
 
 ## 출처 및 권리
 

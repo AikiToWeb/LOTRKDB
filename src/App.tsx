@@ -1293,10 +1293,13 @@ export default function App() {
                       <h2>기록 백업</h2>
                       <p>
                         덱, 플레이 기록, 캠페인, 보유 확장팩을 JSON 파일로
-                        보관합니다.
+                        보관합니다. 공동 플레이 방, 참가자와 방에 등록한 덱, 방
+                        목록의 삭제·복원 상태, 로그인 계정은 포함하지 않습니다.
+                        서비스 이전에는 운영자의 전체 DB 백업이 필요합니다.
                       </p>
                       <button
                         className="btn"
+                        disabled={!ready || busy}
                         onClick={() =>
                           download(`lotrdb-backup-${today()}.json`, {
                             version: 1,
@@ -1306,7 +1309,7 @@ export default function App() {
                         }
                       >
                         <Download size={17} />
-                        전체 백업 다운로드
+                        개인 기록 백업 다운로드
                       </button>
                       <BackupImport
                         state={state}
