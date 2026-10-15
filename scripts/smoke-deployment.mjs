@@ -44,6 +44,9 @@ async function call(
   return data;
 }
 try {
+  const live = await call("/api/health/live");
+  assert.deepEqual(live, { status: "ok", service: "web" });
+  checks.push("Web liveness without a database readiness query");
   const health = await call("/api/health");
   assert.equal(health.database, "connected");
   checks.push("PostgreSQL health");
@@ -71,7 +74,11 @@ try {
   await call("/api/auth/signup", {
     method: "POST",
     expected: 409,
-    body: { username: owner.username.toUpperCase(), name: "중복 검증", password },
+    body: {
+      username: owner.username.toUpperCase(),
+      name: "중복 검증",
+      password,
+    },
   });
   checks.push("Native signup uses name and username; duplicate IDs rejected");
   const deck = {

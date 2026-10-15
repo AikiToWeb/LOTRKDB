@@ -101,6 +101,10 @@ export function createApp({
       next(e);
     }
   }
+  // Periodic uptime checks must not keep a scale-to-zero database awake.
+  app.get("/api/health/live", (req, res) => {
+    res.json({ status: "ok", service: "web" });
+  });
   app.get("/api/health", async (req, res, next) => {
     try {
       await store.health();

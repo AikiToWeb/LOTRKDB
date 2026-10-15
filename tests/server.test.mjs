@@ -59,6 +59,25 @@ test("API rejects unauthenticated reads and foreign-origin writes before touchin
     .send({ email: "invalid", password: "123" })
     .expect(400);
 });
+test("liveness does not query the database while readiness still checks it", async () => {
+  let queries = 0;
+  const app = createApp({
+    store: {
+      health: async () => {
+        queries++;
+      },
+    },
+    origin: "http://test.local",
+    serveStatic: false,
+  });
+  const live = await request(app).get("/api/health/live").expect(200);
+  assert.deepEqual(live.body, { status: "ok", service: "web" });
+  assert.equal(live.headers["cache-control"], "no-store");
+  assert.equal(queries, 0);
+  const ready = await request(app).get("/api/health").expect(200);
+  assert.deepEqual(ready.body, { status: "ok", database: "connected" });
+  assert.equal(queries, 1);
+});
 test(
   "PostgreSQL: accounts, sessions, catalogue, isolation, update, delete and logout",
   { skip: !process.env.TEST_DATABASE_URL },
