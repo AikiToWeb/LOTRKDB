@@ -47,6 +47,8 @@ npm run preview
 
 빌드 명령: `npm ci --include=dev && npm run build`. 시작 명령: `npm start`.
 
+정기 접속 유지는 DB를 조회하지 않는 `/api/health/live`를 사용합니다. `/api/health`는 수동 PostgreSQL 연결 검사와 배포 검증용입니다. 무료 외부 DB의 휴면·사용량을 보존하기 위해 두 검사를 구분합니다. Neon Free 이전 준비와 전체 운영 백업 도구는 [백업 문서](docs/DATABASE_BACKUP.md)를 참조하세요.
+
 | 서버 환경변수           | 설정                                                                                                             |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`          | Blueprint가 Render Postgres 내부 연결로 자동 설정                                                                |

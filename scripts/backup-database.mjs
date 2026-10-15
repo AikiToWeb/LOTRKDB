@@ -85,20 +85,33 @@ async function fingerprints(client) {
   return result;
 }
 let client;
+let stage = "INPUT";
 try {
-  const url = new URL(await hiddenUrl());
+  const supplied = (await hiddenUrl()).trim();
+  // Accept the vendor's psql snippet as text; never execute pasted shell code.
+  const match = supplied.match(
+    /^(?:psql\s+)?(['"]?)(postgres(?:ql)?:\/\/[^\s'"\x00-\x1f]+)\1$/,
+  );
+  if (!match) throw new Error("INVALID_URL_COPY_NEON_CONNECTION_STRING");
+  const url = new URL(match[2]);
   if (!["postgres:", "postgresql:"].includes(url.protocol))
     throw new Error("INVALID_URL");
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (action === "restore-local" && !local)
     throw new Error("LOCAL_RESTORE_ONLY");
-  if (
-    action === "restore-neon" &&
-    (url.hostname !==
-      "ep-curly-butterfly-azjoqo4g.c-3.ap-southeast-1.aws.neon.tech" ||
-      decodeURIComponent(url.pathname.slice(1)) !== "lotrkdb")
-  )
-    throw new Error("WRONG_NEON_TARGET");
+  if (action === "restore-neon") {
+    const directHost =
+      "ep-curly-butterfly-azjoqo4g.c-3.ap-southeast-1.aws.neon.tech";
+    const poolerHost =
+      "ep-curly-butterfly-azjoqo4g-pooler.c-3.ap-southeast-1.aws.neon.tech";
+    if (url.hostname === poolerHost) url.hostname = directHost;
+    if (url.hostname !== directHost)
+      throw new Error("WRONG_NEON_HOST_COPY_FROM_NEON_NOT_RENDER");
+    if (decodeURIComponent(url.pathname.slice(1)) !== "lotrkdb")
+      throw new Error("WRONG_NEON_DATABASE_SELECT_LOTRKDB");
+    if (!url.password || decodeURIComponent(url.password).includes("****"))
+      throw new Error("MASKED_OR_MISSING_PASSWORD_USE_COPY_SNIPPET");
+  }
   const parameters = {
     host: url.hostname,
     port: Number(url.port || 5432),
@@ -116,8 +129,10 @@ try {
           ),
         },
   };
+  stage = "CONNECT";
   client = new pg.Client(parameters);
   await client.connect();
+  stage = "SESSION";
   await client.query("set time zone 'UTC'");
   const env = Object.fromEntries(
     Object.entries(process.env).filter(
@@ -215,6 +230,7 @@ try {
       throw error;
     }
   } else {
+    stage = "READ_ARCHIVE";
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     if (
       manifest.format !== "lotrkdb-pgdump-v1" ||
@@ -232,8 +248,10 @@ try {
         if (!proof.tablesMatch || proof.dumpSha256 !== manifest.dumpSha256)
           throw new Error("LOCAL_VERIFICATION_REQUIRED");
       }
+      stage = "CHECK_EMPTY_TARGET";
       const existing = await fingerprints(client);
       if (existing.length) throw new Error("TARGET_NOT_EMPTY");
+      stage = "RESTORE";
       await command(
         "pg_restore",
         [
@@ -248,6 +266,7 @@ try {
       );
     }
     await client.query("begin isolation level repeatable read read only");
+    stage = "VERIFY_DATA";
     const restored = await fingerprints(client);
     await client.query("commit");
     if (JSON.stringify(restored) !== JSON.stringify(manifest.tables))
@@ -283,13 +302,24 @@ try {
   }
 } catch (error) {
   // Do not log exception messages/stacks supplied by the database or URL parser.
+  const safeCode =
+    /^(?:[0-9A-Z]{5}|E[A-Z_]+|CERT_[A-Z_]+|DEPTH_ZERO_SELF_SIGNED_CERT|UNABLE_TO_[A-Z_]+)$/.test(
+      error.code || "",
+    )
+      ? error.code
+      : "UNCLASSIFIED";
+  console.error("Failure stage:", stage, "code:", safeCode);
   console.error(
     "Backup operation failed:",
     [
       "TTY_REQUIRED",
       "INVALID_URL",
+      "INVALID_URL_COPY_NEON_CONNECTION_STRING",
       "LOCAL_RESTORE_ONLY",
       "WRONG_NEON_TARGET",
+      "WRONG_NEON_HOST_COPY_FROM_NEON_NOT_RENDER",
+      "WRONG_NEON_DATABASE_SELECT_LOTRKDB",
+      "MASKED_OR_MISSING_PASSWORD_USE_COPY_SNIPPET",
       "LOCAL_VERIFICATION_REQUIRED",
       "CLIENT_UNAVAILABLE",
       "CLIENT_FAILED",
