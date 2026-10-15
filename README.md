@@ -132,3 +132,7 @@ RingsDB의 공개 `cards/`, `packs/` API와 공개 저장소의 시나리오 목
 - [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
 카드 원문과 이미지의 권리는 Fantasy Flight Games 및 각 권리자에게 있습니다. RingsDB의 카드 데이터와 이미지는 Hall of Beorn을 참조합니다. 이 앱은 비공식 팬 프로젝트이며 Fantasy Flight Games의 제작·보증·지원·제휴를 받지 않습니다.
+
+### 현재 무료 운영 DB
+
+2026-10-15 기존 Render 웹 서비스를 유지한 채 전체 PostgreSQL 데이터를 Neon Free로 이전하고 복원·로그인·저장·공동 방을 검증했습니다. 서버 전용 `DATABASE_URL`은 Render 대시보드에서 관리합니다. 원본 Render DB는 보존하지만 2026-10-28 만료 예정이며 현재 운영은 Neon을 사용합니다. 자세한 백업·검증·무료 한도는 [DB 백업 문서](docs/DATABASE_BACKUP.md)를 참고하세요.
