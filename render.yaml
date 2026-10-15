@@ -22,7 +22,7 @@ services:
         value: render
       - key: NODE_VERSION
         value: "22"
+      # External Neon connection is maintained as a server-only secret in Render.
+      # Retain the original database resource until migration verification is complete.
       - key: DATABASE_URL
-        fromDatabase:
-          name: lotrkdb-postgres
-          property: connectionString
+        sync: false
