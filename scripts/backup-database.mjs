@@ -9,12 +9,12 @@ import path from "node:path";
 
 const [action, directory] = process.argv.slice(2);
 if (
-  !["backup", "verify", "restore-local"].includes(action) ||
+  !["backup", "verify", "restore-local", "restore-neon"].includes(action) ||
   !directory ||
   !path.isAbsolute(directory)
 ) {
   console.error(
-    "Usage: node scripts/backup-database.mjs backup|verify|restore-local /absolute/private/directory",
+    "Usage: node scripts/backup-database.mjs backup|verify|restore-local|restore-neon /absolute/private/directory",
   );
   process.exit(1);
 }
@@ -92,6 +92,13 @@ try {
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (action === "restore-local" && !local)
     throw new Error("LOCAL_RESTORE_ONLY");
+  if (
+    action === "restore-neon" &&
+    (url.hostname !==
+      "ep-curly-butterfly-azjoqo4g.c-3.ap-southeast-1.aws.neon.tech" ||
+      decodeURIComponent(url.pathname.slice(1)) !== "lotrkdb")
+  )
+    throw new Error("WRONG_NEON_TARGET");
   const parameters = {
     host: url.hostname,
     port: Number(url.port || 5432),
@@ -214,7 +221,17 @@ try {
       manifest.dumpSha256 !== hash(await readFile(dump))
     )
       throw new Error("ARCHIVE_CHECKSUM_MISMATCH");
-    if (action === "restore-local") {
+    if (["restore-local", "restore-neon"].includes(action)) {
+      if (action === "restore-neon") {
+        const proof = JSON.parse(
+          await readFile(
+            path.join(directory, "local-restore-verification.json"),
+            "utf8",
+          ),
+        );
+        if (!proof.tablesMatch || proof.dumpSha256 !== manifest.dumpSha256)
+          throw new Error("LOCAL_VERIFICATION_REQUIRED");
+      }
       const existing = await fingerprints(client);
       if (existing.length) throw new Error("TARGET_NOT_EMPTY");
       await command(
@@ -240,7 +257,9 @@ try {
         directory,
         action === "restore-local"
           ? "local-restore-verification.json"
-          : "verification.json",
+          : action === "restore-neon"
+            ? "neon-restore-verification.json"
+            : "verification.json",
       ),
       JSON.stringify(
         {
@@ -270,6 +289,8 @@ try {
       "TTY_REQUIRED",
       "INVALID_URL",
       "LOCAL_RESTORE_ONLY",
+      "WRONG_NEON_TARGET",
+      "LOCAL_VERIFICATION_REQUIRED",
       "CLIENT_UNAVAILABLE",
       "CLIENT_FAILED",
       "CLIENT_TOO_OLD",
